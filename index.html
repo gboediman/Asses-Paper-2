@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essay Grading System (Pure HTML & Ollama)</title>
+    <!-- Mammoth.js for DOCX parsing - ENSURE THIS FILE IS IN THE SAME FOLDER AS index.html -->
+    <!-- You can download it from: https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js -->
+    <script src="./mammoth.browser.min.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Custom scrollbar for better appearance */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <i data-lucide="pen-tool" class="h-8 w-8 text-blue-600"></i>
+                    <span class="text-xl font-bold text-gray-900">EssayChecker Pro</span>
+                </div>
+                <div class="flex space-x-4">
+                    <button id="studentViewBtn" class="px-4 py-2 rounded-lg transition-colors bg-blue-600 text-white">
+                        <i data-lucide="user" class="inline h-4 w-4 mr-2"></i>
+                        Student View
+                    </button>
+                    <button id="teacherViewBtn" class="px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-blue-600">
+                        <i data-lucide="settings" class="inline h-4 w-4 mr-2"></i>
+                        Teacher Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow p-6">
+        <div id="studentView" class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <div class="text-center mb-8">
+                    <i data-lucide="file-text" class="mx-auto h-16 w-16 text-blue-600 mb-4"></i>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Essay Grading System</h1>
+                    <p class="text-gray-600">Upload your essay for AI detection and rubric-based evaluation</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                        <i data-lucide="upload" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
+                        <div class="mb-4">
+                            <button id="chooseFileBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                Choose DOCX File
+                            </button>
+                            <input type="file" id="fileInput" accept=".docx" class="hidden">
+                        </div>
+                        <div id="fileInfo" class="text-sm text-gray-600 hidden">
+                            <p>Selected: <span id="fileName"></span></p>
+                            <p>Size: <span id="fileSize"></span> KB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="extractedTextPreview" class="mb-8 hidden">
+                    <h3 class="text-lg font-semibold mb-2">Document Preview:</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto">
+                        <p id="previewText" class="text-sm text-gray-700"></p>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button id="submitBtn" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors" disabled>
+                        Submit for Assessment
+                    </button>
+                </div>
+
+                <div id="messageBox" class="mt-4 p-4 rounded-lg hidden"></div>
+
+                <div id="aiDetectionResults" class="mt-8 p-6 bg-gray-50 rounded-lg hidden">
+                    <div class="flex items-center mb-4">
+                        <span id="aiStatusIcon"></span>
+                        <h3 class="text-xl font-semibold">AI Detection Results (Powered by Ollama)</h3>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">AI Probability</p>
+                            <p id="aiProbability" class="text-2xl font-bold"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Confidence Level</p>
+                            <p id="aiConfidence" class="text-lg font-semibold text-blue-600"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Status</p>
+                            <p id="aiOverallStatus" class="text-lg font-semibold"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Word Count</p>
+                            <p id="wordCount" class="font-semibold"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Sentences</p>
+                            <p id="sentenceCount" class="font-semibold"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Average Sentence Length</p>
+                            <p id="avgSentenceLength" class="font-semibold"></p>
+                        </div>
+                    </div>
+
+                    <div id="aiFlagsContainer" class="hidden">
+                        <p class="text-sm text-gray-600 mb-2">Detection Flags:</p>
+                        <ul id="aiFlags" class="text-sm space-y-1"></ul>
+                    </div>
+                </div>
+
+                <div id="rubricAssessmentResults" class="mt-8 p-6 bg-blue-50 rounded-lg hidden">
+                    <div class="flex items-center mb-4">
+                        <i data-lucide="bar-chart-3" class="h-6 w-6 text-blue-600 mr-2"></i>
+                        <h3 class="text-xl font-semibold">Rubric Assessment Results (Powered by Ollama)</h3>
+                    </div>
+                    
+                    <div class="text-center mb-6">
+                        <div id="overallScore" class="text-4xl font-bold text-blue-600 mb-2"></div>
+                        <p class="text-gray-600">Overall Score</p>
+                    </div>
+
+                    <div id="overallCommentsContainer" class="mb-6 p-4 bg-white border border-blue-200 rounded-lg hidden">
+                        <h4 class="font-medium text-blue-800 mb-2">Overall Comments:</h4>
+                        <p id="overallComments" class="text-sm text-gray-700"></p>
+                    </div>
+
+                    <div id="rubricBreakdown" class="space-y-4">
+                        <!-- Rubric breakdown items will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="teacherSettings" class="max-w-4xl mx-auto hidden">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <div class="flex items-center mb-6">
+                    <i data-lucide="settings" class="h-8 w-8 text-blue-600 mr-3"></i>
+                    <h1 class="text-3xl font-bold text-gray-900">Teacher Settings</h1>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-4">Rubric Criteria</h3>
+                    
+                    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-medium mb-3">Add New Criterion</h4>
+                        <div class="grid md:grid-cols-3 gap-4 mb-3">
+                            <input type="text" id="newCriterionName" placeholder="Criterion name" class="px-3 py-2 border border-gray-300 rounded-lg">
+                            <input type="number" id="newCriterionWeight" placeholder="Weight (%)" class="px-3 py-2 border border-gray-300 rounded-lg" value="0">
+                            <button id="addCriterionBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                Add Criterion
+                            </button>
+                        </div>
+                        <input type="text" id="newCriterionDescription" placeholder="Description" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+
+                    <div id="rubricSettingsList" class="space-y-4">
+                        <!-- Rubric settings items will be inserted here -->
+                    </div>
+
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            Total Weight: <span id="totalWeightDisplay"></span>%
+                            <span id="totalWeightWarning" class="font-semibold hidden"> (Must be 100%)</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // URL for Ollama API. Adjust if your Ollama runs on a different port or host.
+        const OLLAMA_URL = 'http://localhost:11434/api/generate';
+        // IMPORTANT: Adjust to the CORRECT MODEL NAME in your Ollama.
+        // You can check by running 'ollama list' in your terminal.
+        // Common text generation models: 'llama2', 'mistral', 'gemma', 'phi3'
+        const OLLAMA_MODEL = 'gemma3:latest'; // Updated to gemma3:latest
+
+        // Initial setup on window load to ensure all resources and DOM are ready
+        window.onload = () => {
+            // Log mammoth.js status when window.onload is executed
+            console.log('Mammoth.js loaded status (inside window.onload):', typeof mammoth);
+
+            // DOM Elements
+            const studentViewBtn = document.getElementById('studentViewBtn');
+            const teacherViewBtn = document.getElementById('teacherViewBtn');
+            const studentView = document.getElementById('studentView');
+            const teacherSettings = document.getElementById('teacherSettings');
+
+            const fileInput = document.getElementById('fileInput');
+            const chooseFileBtn = document.getElementById('chooseFileBtn');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileNameSpan = document.getElementById('fileName');
+            const fileSizeSpan = document.getElementById('fileSize');
+            const extractedTextPreview = document.getElementById('extractedTextPreview');
+            const previewText = document.getElementById('previewText');
+            const submitBtn = document.getElementById('submitBtn');
+            const messageBox = document.getElementById('messageBox');
+
+            const aiDetectionResults = document.getElementById('aiDetectionResults');
+            const aiStatusIcon = document.getElementById('aiStatusIcon');
+            const aiProbability = document.getElementById('aiProbability');
+            const aiConfidence = document.getElementById('aiConfidence');
+            const aiOverallStatus = document.getElementById('aiOverallStatus');
+            const wordCountSpan = document.getElementById('wordCount');
+            const sentenceCountSpan = document.getElementById('sentenceCount');
+            const avgSentenceLengthSpan = document.getElementById('avgSentenceLength');
+            const aiFlagsContainer = document.getElementById('aiFlagsContainer');
+            const aiFlagsList = document.getElementById('aiFlags');
+
+            const rubricAssessmentResults = document.getElementById('rubricAssessmentResults');
+            const overallScore = document.getElementById('overallScore');
+            const overallCommentsContainer = document.getElementById('overallCommentsContainer');
+            const overallComments = document.getElementById('overallComments');
+            const rubricBreakdown = document.getElementById('rubricBreakdown');
+
+            const newCriterionNameInput = document.getElementById('newCriterionName');
+            const newCriterionWeightInput = document.getElementById('newCriterionWeight');
+            const newCriterionDescriptionInput = document.getElementById('newCriterionDescription');
+            const addCriterionBtn = document.getElementById('addCriterionBtn');
+            const rubricSettingsList = document.getElementById('rubricSettingsList');
+            const totalWeightDisplay = document.getElementById('totalWeightDisplay'); // Corrected
+            const totalWeightWarning = document.getElementById('totalWeightWarning');
+
+            // Variables
+            let currentFile = null;
+            let extractedDocText = '';
+            // Retrieve rubric settings from localStorage or use defaults
+            let rubricSettings = JSON.parse(localStorage.getItem('rubricSettings')) || [
+                { id: 1, criterion: 'Good and correct grammar', weight: 40, description: 'Correct and effective use of grammar and sentence structure.' },
+                { id: 2, criterion: 'Correct spelling & no typos', weight: 30, description: 'Accuracy in spelling, punctuation, and absence of typographical errors.' },
+                { id: 3, criterion: 'Relevance to the folklore topic', weight: 30, description: 'How well the essay reflects the characteristics and themes of folklore.' }
+            ];
+
+            // --- Utility Functions ---
+            function showMessage(message, type = 'info') {
+                messageBox.textContent = message;
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+                messageBox.classList.add('block');
+                if (type === 'error') {
+                    messageBox.classList.add('bg-red-100', 'text-red-700');
+                } else if (type === 'success') {
+                    messageBox.classList.add('bg-green-100', 'text-green-700');
+                } else {
+                    messageBox.classList.add('bg-blue-100', 'text-blue-700');
+                }
+            }
+
+            function hideMessage() {
+                messageBox.classList.add('hidden');
+            }
+
+            function clearResults() {
+                aiDetectionResults.classList.add('hidden');
+                rubricAssessmentResults.classList.add('hidden');
+                hideMessage();
+            }
+
+            // --- View Switching ---
+            studentViewBtn.addEventListener('click', () => {
+                studentView.classList.remove('hidden');
+                teacherSettings.classList.add('hidden');
+                studentViewBtn.classList.add('bg-blue-600', 'text-white');
+                studentViewBtn.classList.remove('text-gray-600', 'hover:text-blue-600');
+                teacherViewBtn.classList.remove('bg-blue-600', 'text-white');
+                teacherViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
+                clearResults(); // Clear results when switching views
+                lucide.createIcons(); // Re-render Lucide icons
+            });
+
+            teacherViewBtn.addEventListener('click', () => {
+                studentView.classList.add('hidden');
+                teacherSettings.classList.remove('hidden');
+                teacherViewBtn.classList.add('bg-blue-600', 'text-white');
+                teacherViewBtn.classList.remove('text-gray-600', 'hover:text-blue-600');
+                studentViewBtn.classList.remove('bg-blue-600', 'text-white');
+                studentViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
+                renderRubricSettings(); // Render settings when view is active
+                lucide.createIcons(); // Re-render Lucide icons
+            });
+
+            // --- File Upload ---
+            chooseFileBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', async (event) => {
+                const uploadedFile = event.target.files[0];
+                if (uploadedFile && uploadedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    currentFile = uploadedFile;
+                    fileNameSpan.textContent = uploadedFile.name;
+                    fileSizeSpan.textContent = (uploadedFile.size / 1024).toFixed(1);
+                    fileInfo.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                    clearResults();
+                    hideMessage();
+
+                    try {
+                        if (typeof mammoth === 'undefined' || !mammoth.extractRawText) {
+                            throw new Error('mammoth.js is not loaded or ready. Make sure "mammoth.browser.min.js" is in the same directory as index.html.');
+                        }
+                        const arrayBuffer = await uploadedFile.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer });
+                        extractedDocText = result.value;
+                        previewText.textContent = extractedDocText.substring(0, 500) + (extractedDocText.length > 500 ? '...' : '');
+                        extractedTextPreview.classList.remove('hidden');
+                    } catch (error) {
+                        console.error('Error extracting text from DOCX:', error);
+                        showMessage(`Error reading document: ${error.message}. Make sure it's a valid .docx file and try again.`, 'error');
+                        submitBtn.disabled = true;
+                        extractedTextPreview.classList.add('hidden');
+                    }
+                } else {
+                    showMessage('Please upload only .docx files.', 'error');
+                    currentFile = null;
+                    extractedDocText = '';
+                    fileInfo.classList.add('hidden');
+                    submitBtn.disabled = true;
+                    extractedTextPreview.classList.add('hidden');
+                }
+            });
+
+            // --- Ollama API Calls ---
+            async function callOllama(prompt) {
+                try {
+                    const response = await fetch(OLLAMA_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: OLLAMA_MODEL,
+                            prompt: prompt,
+                            stream: false
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json(); 
+                        throw new Error(`Ollama API error: ${response.status} - ${errorData.error || response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    let ollamaResponseText = data.response;
+
+                    // Remove Markdown code block if present
+                    const jsonMatch = ollamaResponseText.match(/```json\n([\s\S]*?)\n```/);
+                    if (jsonMatch && jsonMatch[1]) {
+                        ollamaResponseText = jsonMatch[1];
+                    } else {
+                        // If no code block, try to remove just backticks if present
+                        ollamaResponseText = ollamaResponseText.replace(/```/g, '').trim();
+                    }
+
+                    // Parse the cleaned JSON string
+                    return JSON.parse(ollamaResponseText);
+
+                } catch (error) {
+                    console.error('Ollama call error:', error);
+                    throw error; // Re-throw to be handled in the calling function
+                }
+            }
+
+            async function detectAIContent(text) {
+                showMessage('🤖 Analyzing text for AI content...', 'info');
+                const prompt = `You are an AI detection system. Analyze the following text and determine the probability that this text was written by an AI. Provide your response in JSON format with the following structure:
+{
+  "ai_probability": <integer_percentage_0_100>,
+  "confidence": <integer_confidence_level_0_100>,
+  "flags": ["list", "of", "specific", "flags", "e.g.", "repetitive phrases", "unnatural phrasing", "unvaried sentence structure"]
+}
+
+Text to analyze:
+"${text}"`;
+
+                try {
+                    const result = await callOllama(prompt);
+                    hideMessage();
+                    return {
+                        probability: result.ai_probability || 0,
+                        confidence: result.confidence || 0,
+                        flags: result.flags || [],
+                        wordCount: text.split(/\s+/).filter(word => word.length > 0).length, // More robust word count
+                        sentenceCount: text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length, // More robust sentence count
+                        avgSentenceLength: Math.round(text.split(/[.!?]\s*/).filter(s => s.trim().length > 10)
+                            .reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / 
+                            (text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length || 1)) 
+                    };
+                } catch (error) {
+                    console.error('AI Detection Error:', error);
+                    showMessage('AI detection failed. Using fallback analysis. Ensure Ollama is running and the selected model supports text generation.', 'error');
+                    const sentences = text.split(/[.!?]\s*/).filter(s => s.trim().length > 20);
+                    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+                    const avgSentenceLength = sentences.reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / (sentences.length || 1);
+                    
+                    return {
+                        probability: Math.floor(Math.random() * 30),
+                        confidence: 75,
+                        flags: ['Service unavailable - using fallback analysis'],
+                        wordCount,
+                        sentenceCount: sentences.length,
+                        avgSentenceLength: Math.round(avgSentenceLength)
+                    };
+                }
+            }
+
+            async function scoreWithOllamaRubric(text, rubricCriteria) {
+                showMessage('📊 Scoring essay with Ollama rubric...', 'info');
+                const prompt = `You are an essay grading assistant. Grade the following essay based on the provided rubric criteria. For each criterion, provide a score from 1 to 5 (1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent) and give specific feedback. Also, provide overall comments for the essay.
+
+Provide your response in JSON format with the following structure:
+{
+  "scores": {
+    "Criterion Name 1": <integer_score>,
+    "Criterion Name 2": <integer_score>
+    // ... for all criteria you defined in the frontend
+  },
+  "feedback": {
+    "Criterion Name 1": "Specific feedback for this criterion, explaining why the score was given and how to improve.",
+    "Criterion Name 2": "Specific feedback for this criterion."
+    // ... for all criteria
+  },
+  "overall_comments": "Overall comments on the essay's strengths and weaknesses, and suggestions for improvement."
+}
+
+Essay:
+"${text}"
+
+Rubric Criteria:
+${JSON.stringify(rubricCriteria, null, 2)}
+`; 
+
+                try {
+                    const result = await callOllama(prompt);
+                    hideMessage();
+                    
+                    const individualScores = result.scores || {};
+                    let totalScore = 0;
+                    let totalWeight = 0;
+                    
+                    const breakdown = rubricCriteria.map(criterion => {
+                        // Ensure criterion name matches what Ollama might return, or use a fallback
+                        const score = individualScores[criterion.criterion] || 3; // Default score 3 if none
+                        const weightedScore = (score * criterion.weight / 5); // Score 1-5, multiplied by weight, divided by 5 for normalization
+                        totalScore += weightedScore;
+                        totalWeight += criterion.weight;
+                        
+                        return {
+                            ...criterion,
+                            score: score,
+                            weightedScore: weightedScore,
+                            feedback: result.feedback?.[criterion.criterion] || 'No specific feedback provided.'
+                        };
+                    });
+                    
+                    // Calculate final score based on totalScore and totalWeight
+                    const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100);
+                    
+                    return {
+                        individualScores,
+                        totalScore: finalScore,
+                        breakdown,
+                        overallComments: result.overall_comments || 'Assessment complete.'
+                    };
+                } catch (error) {
+                    console.error('Rubric Scoring Error:', error);
+                    showMessage('Rubric assessment failed. Using fallback analysis. Ensure Ollama is running and the selected model supports text generation.', 'error');
+                    const scores = {};
+                    let totalScore = 0;
+                    let totalWeight = 0;
+
+                    const breakdown = rubricCriteria.map(criterion => {
+                        let score = 3; // Fallback score
+                        scores[criterion.criterion] = score;
+                        totalScore += score * criterion.weight;
+                        totalWeight += criterion.weight; 
+                        
+                        return {
+                            ...criterion,
+                            score: score,
+                            weightedScore: (score * criterion.weight / 5),
+                            feedback: 'Fallback feedback - Ollama service unavailable.'
+                        };
+                    });
+
+                    const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100 / 5); 
+                    
+                    return {
+                        individualScores: scores,
+                        totalScore: finalScore,
+                        breakdown,
+                        overallComments: 'Assessment completed using fallback method - Ollama service unavailable. Results may be less accurate.'
+                    };
+                }
+            }
+
+            // --- Submit Assessment ---
+            submitBtn.addEventListener('click', async () => {
+                if (!currentFile || !extractedDocText) {
+                    showMessage('Please upload a document first.', 'error');
+                    return;
+                }
+
+                if (rubricSettings.length === 0) {
+                    showMessage('Please add at least one rubric criterion in Teacher Settings.', 'error');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+                clearResults(); 
+
+                try {
+                    console.log('Running AI detection with Ollama...');
+                    const aiResult = await detectAIContent(extractedDocText);
+                    
+                    // Display AI Detection Results
+                    aiDetectionResults.classList.remove('hidden');
+                    aiProbability.textContent = `${aiResult.probability}%`;
+                    aiConfidence.textContent = `${aiResult.confidence}%`;
+                    wordCountSpan.textContent = aiResult.wordCount;
+                    sentenceCountSpan.textContent = aiResult.sentenceCount;
+                    avgSentenceLengthSpan.textContent = aiResult.avgSentenceLength;
+
+                    // Status icon and text based on AI probability
+                    if (aiResult.probability >= 50) { // Example: 50% and above is considered AI
+                        aiStatusIcon.innerHTML = '<i data-lucide="robot" class="h-6 w-6 text-red-600 mr-2"></i>';
+                        aiProbability.classList.remove('text-green-600');
+                        aiProbability.classList.add('text-red-600');
+                        aiOverallStatus.textContent = 'AI Detected';
+                        aiOverallStatus.classList.remove('text-green-600');
+                        aiOverallStatus.classList.add('text-red-600');
+                    } else {
+                        aiStatusIcon.innerHTML = '<i data-lucide="user-check" class="h-6 w-6 text-green-600 mr-2"></i>';
+                        aiProbability.classList.remove('text-red-600');
+                        aiProbability.classList.add('text-green-600');
+                        aiOverallStatus.textContent = 'Human Detected';
+                        aiOverallStatus.classList.remove('text-red-600');
+                        aiOverallStatus.classList.add('text-green-600');
+                    }
+                    
+                    if (aiResult.flags && aiResult.flags.length > 0) {
+                        aiFlagsContainer.classList.remove('hidden');
+                        aiFlagsList.innerHTML = '';
+                        aiResult.flags.forEach(flag => {
+                            const li = document.createElement('li');
+                            li.className = 'text-orange-600';
+                            li.textContent = `• ${flag}`;
+                            aiFlagsList.appendChild(li);
+                        });
+                    } else {
+                        aiFlagsContainer.classList.add('hidden');
+                    }
+
+                    // Rubric assessment always runs
+                    console.log('Running rubric assessment with Ollama...');
+                    const rubricResult = await scoreWithOllamaRubric(extractedDocText, rubricSettings);
+                    
+                    // Display Rubric Assessment Results
+                    rubricAssessmentResults.classList.remove('hidden');
+                    overallScore.textContent = `${rubricResult.totalScore}%`;
+                    overallComments.textContent = rubricResult.overallComments;
+                    if (rubricResult.overallComments) {
+                        overallCommentsContainer.classList.remove('hidden');
+                    } else {
+                        overallCommentsContainer.classList.add('hidden');
+                    }
+
+                    rubricBreakdown.innerHTML = ''; 
+                    rubricResult.breakdown.forEach(item => {
+                        const criterionDiv = document.createElement('div');
+                        criterionDiv.className = 'p-4 bg-white border border-blue-200 rounded-lg';
+                        criterionDiv.innerHTML = `
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-medium text-blue-800">${item.criterion} (<span class="text-gray-600">${item.weight}%</span>)</h4>
+                                <span class="text-xl font-bold text-blue-600">${item.score}/5</span>
+                            </div>
+                            <p class="text-sm text-gray-700">${item.feedback}</p>
+                        `;
+                        rubricBreakdown.appendChild(criterionDiv);
+                    });
+                    lucide.createIcons(); // Re-render Lucide icons for results
+                } catch (error) {
+                    console.error('Overall Assessment Error:', error);
+                    showMessage(`An error occurred during assessment: ${error.message}. Please check your Ollama setup and try again.`, 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit for Assessment';
+                    lucide.createIcons(); // Ensure all icons are rendered after updates
+                }
+            });
+
+            // --- Teacher Settings Functions ---
+            function calculateTotalWeight() {
+                const total = rubricSettings.reduce((sum, criterion) => sum + criterion.weight, 0);
+                totalWeightDisplay.textContent = total;
+                if (total !== 100) {
+                    totalWeightWarning.classList.remove('hidden');
+                    totalWeightDisplay.classList.add('text-red-600');
+                } else {
+                    totalWeightWarning.classList.add('hidden');
+                    totalWeightDisplay.classList.remove('text-red-600');
+                }
+            }
+
+            function saveRubricSettings() {
+                localStorage.setItem('rubricSettings', JSON.stringify(rubricSettings));
+                calculateTotalWeight();
+            }
+
+            function renderRubricSettings() {
+                rubricSettingsList.innerHTML = '';
+                rubricSettings.forEach(criterion => {
+                    const criterionDiv = document.createElement('div');
+                    criterionDiv.className = 'p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4';
+                    criterionDiv.innerHTML = `
+                        <div class="flex-grow">
+                            <input type="text" value="${criterion.criterion}" data-id="${criterion.id}" data-field="criterion"
+                                class="w-full text-lg font-medium text-gray-800 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <textarea data-id="${criterion.id}" data-field="description"
+                                class="w-full text-sm text-gray-600 mt-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows="2" placeholder="Description">${criterion.description}</textarea>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" value="${criterion.weight}" data-id="${criterion.id}" data-field="weight"
+                                class="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">%</span>
+                            <button data-id="${criterion.id}" class="delete-criterion-btn p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors">
+                                <i data-lucide="trash-2" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                    `;
+                    rubricSettingsList.appendChild(criterionDiv);
+                });
+
+                // Add event listeners for new elements
+                rubricSettingsList.querySelectorAll('.delete-criterion-btn').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const idToDelete = parseInt(event.currentTarget.dataset.id);
+                        rubricSettings = rubricSettings.filter(c => c.id !== idToDelete);
+                        saveRubricSettings();
+                        renderRubricSettings();
+                    });
+                });
+
+                rubricSettingsList.querySelectorAll('input[data-field="criterion"], textarea[data-field="description"]').forEach(input => {
+                    input.addEventListener('change', (event) => {
+                        const idToUpdate = parseInt(event.target.dataset.id);
+                        const field = event.target.dataset.field;
+                        const value = event.target.value;
+                        const criterion = rubricSettings.find(c => c.id === idToUpdate);
+                        if (criterion) {
+                            criterion[field] = value;
+                            saveRubricSettings();
+                        }
+                    });
+                });
+
+                rubricSettingsList.querySelectorAll('input[data-field="weight"]').forEach(input => {
+                    input.addEventListener('change', (event) => {
+                        const idToUpdate = parseInt(event.target.dataset.id);
+                        const value = parseInt(event.target.value);
+                        const criterion = rubricSettings.find(c => c.id === idToUpdate);
+                        if (criterion && !isNaN(value) && value >= 0) {
+                            criterion.weight = value;
+                            saveRubricSettings();
+                        } else {
+                            // Revert to previous valid value or show error
+                            event.target.value = criterion.weight;
+                            showMessage('Weight must be a non-negative number.', 'error');
+                        }
+                    });
+                });
+
+                calculateTotalWeight();
+                lucide.createIcons(); // Re-render Lucide icons for settings
+            }
+
+            addCriterionBtn.addEventListener('click', () => {
+                const name = newCriterionNameInput.value.trim();
+                const weight = parseInt(newCriterionWeightInput.value);
+                const description = newCriterionDescriptionInput.value.trim();
+
+                if (!name) {
+                    showMessage('Criterion name cannot be empty.', 'error');
+                    return;
+                }
+                if (isNaN(weight) || weight < 0) {
+                    showMessage('Weight must be a non-negative number.', 'error');
+                    return;
+                }
+
+                const newId = rubricSettings.length > 0 ? Math.max(...rubricSettings.map(c => c.id)) + 1 : 1;
+                rubricSettings.push({ id: newId, criterion: name, weight: weight, description: description });
+                saveRubricSettings();
+                renderRubricSettings();
+
+                newCriterionNameInput.value = '';
+                newCriterionWeightInput.value = '0';
+                newCriterionDescriptionInput.value = '';
+                hideMessage();
+            });
+
+            // Initial render of Lucide icons on page load
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
