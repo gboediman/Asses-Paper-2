@@ -72,6 +72,13 @@
           console.log(`${title}: ${message}`);
         };
 
+        // Utility function to hide messages (newly added)
+        const hideMessage = () => {
+          // In a real application, you might clear a message display area in the UI.
+          // For now, we'll just log that the message is being hidden.
+          console.log('Message hidden.');
+        };
+
         // --- Lucide Icons as React Components (Manually Defined) ---
         // This is a workaround for using Lucide icons directly in a browser without a build step.
         const IconWrapper = ({ children, className, ...props }) => (
@@ -382,7 +389,7 @@ Text to analyze:
                   const geminiResponseText = await callGeminiAPI(prompt, { responseMimeType: "application/json" });
                   const aiData = JSON.parse(geminiResponseText);
                   
-                  hideMessage();
+                  hideMessage(); // Now hideMessage is defined
                   return {
                       probability: aiData.ai_probability || 0,
                       confidence: aiData.confidence || 0,
@@ -447,7 +454,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                   const geminiResponseText = await callGeminiAPI(prompt, { responseMimeType: "application/json" });
                   const rubricData = JSON.parse(geminiResponseText);
                   
-                  hideMessage();
+                  hideMessage(); // Now hideMessage is defined
                   
                   const individualScores = rubricData.scores || {};
                   let totalScore = 0;
@@ -866,7 +873,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                         disabled={isSavingSettings}
                         className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-400"
                       >
-                        {isSavingSettings ? 'Saving Settings...' : 'Save Settings Now'}
+                        {isSavingSettings ? 'Saving...' : 'Save Settings Now'}
                       </button>
                     </div>
                   </div>
