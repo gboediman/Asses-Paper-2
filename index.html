@@ -391,7 +391,8 @@ Text to analyze:
 
                     overallCommentText = await callGemini(overallCommentPrompt);
 
-                    const finalCalculatedScore = (totalWeight > 0) ? Math.round((totalScore / totalWeight) * 100) : 0;
+                    // Ensure final score does not exceed 100
+                    const finalCalculatedScore = Math.min(100, (totalWeight > 0) ? Math.round((totalScore / totalWeight) * 100) : 0);
 
                     return {
                         individualScores: detailedRubricFeedback,
@@ -420,7 +421,8 @@ Text to analyze:
                             feedback: 'Fallback feedback - Gemini service unavailable.'
                         };
                     });
-                    const finalScore = Math.round((fallbackTotalScore / (fallbackTotalWeight || 1)) * 100);
+                    // Ensure fallback final score does not exceed 100
+                    const finalScore = Math.min(100, Math.round((fallbackTotalScore / (fallbackTotalWeight || 1)) * 100));
 
                     return {
                         individualScores: {},
@@ -703,206 +705,4 @@ Text to analyze:
             setupSaveSettingsButton(); // Call the new setup function
 
             // Initial render of Lucide icons on page load
-            lucide.createIcons();
-        };
-    </script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            background-color: #f3f4f6;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        /* Custom scrollbar for better appearance */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body class="antialiased">
-    <nav class="bg-white shadow-sm border-b">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-4">
-                    <i data-lucide="pen-tool" class="h-8 w-8 text-blue-600"></i>
-                    <span class="text-xl font-bold text-gray-900">EssayChecker Pro</span>
-                </div>
-                <div class="flex space-x-4">
-                    <button id="studentViewBtn" class="px-4 py-2 rounded-lg transition-colors bg-blue-600 text-white">
-                        <i data-lucide="user" class="inline h-4 w-4 mr-2"></i>
-                        Student View
-                    </button>
-                    <button id="teacherViewBtn" class="px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-blue-600">
-                        <i data-lucide="settings" class="inline h-4 w-4 mr-2"></i>
-                        Teacher Settings
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <main class="flex-grow p-6">
-        <div id="studentView" class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <div class="text-center mb-8">
-                    <i data-lucide="file-text" class="mx-auto h-16 w-16 text-blue-600 mb-4"></i>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Essay Grading System</h1>
-                    <p class="text-gray-600">Upload your essay for AI detection and rubric-based evaluation</p>
-                </div>
-
-                <div class="mb-8">
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                        <i data-lucide="upload" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
-                        <div class="mb-4">
-                            <button id="chooseFileBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                Choose DOCX File
-                            </button>
-                            <input type="file" id="fileInput" accept=".docx" class="hidden">
-                        </div>
-                        <div id="fileInfo" class="text-sm text-gray-600 hidden">
-                            <p>Selected: <span id="fileName"></span></p>
-                            <p>Size: <span id="fileSize"></span> KB</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="extractedTextPreview" class="mb-8 hidden">
-                    <h3 class="text-lg font-semibold mb-2">Document Preview:</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto">
-                        <p id="previewText" class="text-sm text-gray-700"></p>
-                    </div>
-                </div>
-
-                <div class="text-center">
-                    <button id="submitBtn" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors" disabled>
-                        Submit for Assessment
-                    </button>
-                </div>
-
-                <div id="messageBox" class="mt-4 p-4 rounded-lg hidden"></div>
-
-                <div id="aiDetectionResults" class="mt-8 p-6 bg-gray-50 rounded-lg hidden">
-                    <div class="flex items-center mb-4">
-                        <span id="aiStatusIcon"></span>
-                        <h3 class="text-xl font-semibold">AI Detection Results (Powered by Gemini)</h3>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-600">AI Probability</p>
-                            <p id="aiProbability" class="text-2xl font-bold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Confidence Level</p>
-                            <p id="aiConfidence" class="text-lg font-semibold text-blue-600"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Status</p>
-                            <p id="aiOverallStatus" class="text-lg font-semibold"></p>
-                        </div>
-                    </div>
-
-                    <div class="grid md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-600">Word Count</p>
-                            <p id="wordCount" class="font-semibold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Sentences</p>
-                            <p id="sentenceCount" class="font-semibold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Average Sentence Length</p>
-                            <p id="avgSentenceLength" class="font-semibold"></p>
-                        </div>
-                    </div>
-
-                    <div id="aiFlagsContainer" class="hidden">
-                        <p class="text-sm text-gray-600 mb-2">Detection Flags:</p>
-                        <ul id="aiFlags" class="text-sm space-y-1"></ul>
-                    </div>
-                </div>
-
-                <div id="rubricAssessmentResults" class="mt-8 p-6 bg-blue-50 rounded-lg hidden">
-                    <div class="flex items-center mb-4">
-                        <i data-lucide="bar-chart-3" class="h-6 w-6 text-blue-600 mr-2"></i>
-                        <h3 class="text-xl font-semibold">Rubric Assessment Results (Powered by Gemini)</h3>
-                    </div>
-
-                    <div class="text-center mb-6">
-                        <div id="overallScore" class="text-4xl font-bold text-blue-600 mb-2"></div>
-                        <p class="text-gray-600">Overall Score</p>
-                    </div>
-
-                    <div id="overallCommentsContainer" class="mb-6 p-4 bg-white border border-blue-200 rounded-lg hidden">
-                        <h4 class="font-medium text-blue-800 mb-2">Overall Comments:</h4>
-                        <p id="overallComments" class="text-sm text-gray-700"></p>
-                    </div>
-
-                    <div id="rubricBreakdown" class="space-y-4">
-                        <!-- Rubric breakdown items will be inserted here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="teacherSettings" class="max-w-4xl mx-auto hidden">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <div class="flex items-center mb-6">
-                    <i data-lucide="settings" class="h-8 w-8 text-blue-600 mr-3"></i>
-                    <h1 class="text-3xl font-bold text-gray-900">Teacher Settings</h1>
-                </div>
-
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold mb-4">Rubric Criteria</h3>
-
-                    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-                        <h4 class="font-medium mb-3">Add New Criterion</h4>
-                        <div class="grid md:grid-cols-3 gap-4 mb-3">
-                            <input type="text" id="newCriterionName" placeholder="Criterion Title" class="px-3 py-2 border border-gray-300 rounded-lg">
-                            <input type="number" id="newCriterionWeight" placeholder="Weight (%)" class="px-3 py-2 border border-gray-300 rounded-lg" value="0" min="0">
-                            <button id="addCriterionBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                                Add Criterion
-                            </button>
-                        </div>
-                        <textarea id="newCriterionDescription" placeholder="Description" class="w-full px-3 py-2 border border-gray-300 rounded-lg h-20 resize-y"></textarea>
-                    </div>
-
-                    <div id="rubricSettingsList" class="space-y-4">
-                        <!-- Rubric settings items will be inserted here -->
-                    </div>
-
-                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p class="text-sm text-yellow-800">
-                            Total Weight: <span id="totalWeightDisplay"></span>%
-                            <span id="totalWeightWarning" class="font-semibold hidden"> (Must be 100%)</span>
-                        </p>
-                    </div>
-
-                    <!-- New Save Settings Button -->
-                    <div class="mt-8 text-center">
-                        <button id="saveSettingsNowBtn" class="bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors">
-                            Save Settings Now
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-</body>
-</html>
+            
