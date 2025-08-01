@@ -192,8 +192,6 @@
             { id: 4, criterion: 'Writing Quality', weight: 20, description: 'Grammar, syntax, and style' },
             { id: 5, criterion: 'Critical Thinking', weight: 15, description: 'Analysis, evaluation, and original thought' }
           ]);
-          // AI Threshold state is no longer needed as the section is removed
-          // const [aiThreshold, setAiThreshold] = React.useState(10);
           const [newCriterion, setNewCriterion] = React.useState({ criterion: '', weight: '', description: '' });
           const [isSavingSettings, setIsSavingSettings] = React.useState(false);
           const [isSettingsLoaded, setIsSettingsLoaded] = React.useState(false);
@@ -247,8 +245,6 @@
                 if (docSnap.exists()) {
                   const data = docSnap.data();
                   setRubricSettings(data.rubricSettings || []);
-                  // AI Threshold state is no longer needed
-                  // setAiThreshold(data.aiThreshold || 10);
                   showMessage('Settings Loaded', 'Rubric settings loaded successfully.');
                 } else {
                   showMessage('Settings', 'No settings found in Firestore. Using default settings.');
@@ -276,7 +272,6 @@
               const settingsDocRef = firebase.firestore.doc(db, `artifacts/${currentAppId}/users/${userId}/settings/appSettings`);
               await firebase.firestore.setDoc(settingsDocRef, {
                 rubricSettings,
-                // aiThreshold, // AI Threshold is no longer saved
                 lastUpdated: new Date()
               }, { merge: true });
               showMessage('Settings Saved', 'Settings successfully saved to Firestore.');
@@ -321,7 +316,7 @@
            */
           async function callGeminiAPI(promptText, generationConfig = {}) {
               const API_KEY = "AIzaSyAq71Famse8z1JTjMJw9NaXQSG3a7Ea0eU"; // Kunci API Gemini Anda
-              const MODEL_NAME = "gemini-pro"; // Atau model Gemini lainnya
+              const MODEL_NAME = "gemini-1.5-flash-latest"; 
               const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
               const payload = {
@@ -587,6 +582,18 @@ ${JSON.stringify(rubricCriteria, null, 2)}
             saveSettings(); // Save settings after change
           };
 
+          // Function to handle changes in existing rubric criterion fields
+          const handleCriterionChange = (id, field, value) => {
+            setRubricSettings(prevSettings => 
+              prevSettings.map(criterion => 
+                criterion.id === id ? { ...criterion, [field]: field === 'weight' ? parseInt(value) || 0 : value } : criterion
+              )
+            );
+            // Save settings immediately after a change
+            saveSettings();
+          };
+
+
           // Student View Component
           const StudentView = () => (
             <div className="max-w-4xl mx-auto p-6 font-inter">
@@ -748,123 +755,125 @@ ${JSON.stringify(rubricCriteria, null, 2)}
           );
 
           // Teacher Settings Component
-          const TeacherSettings = () => (
-            <div className="max-w-4xl mx-auto p-6 font-inter">
-              <div className="bg-white rounded-lg shadow-lg p-8">
-                <div className="flex items-center mb-6">
-                  <Settings className="h-8 w-8 text-blue-600 mr-3" />
-                  <h1 className="text-3xl font-bold text-gray-900">Teacher Settings</h1>
-                </div>
+          const TeacherSettings = () => {
+            // Calculate total weight for display
+            const totalWeight = rubricSettings.reduce((sum, r) => sum + r.weight, 0);
 
-                {/* AI Threshold Setting - Removed as per user request */}
-                {/* <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">AI Detection Threshold</h3>
-                  <div className="flex items-center space-x-4">
-                    <label htmlFor="ai-threshold-slider" className="text-sm text-gray-600 flex-shrink-0">Threshold:</label>
-                    <input
-                      id="ai-threshold-slider"
-                      type="range"
-                      min="0"
-                      max="100" // Increased max to 100 for more flexibility
-                      value={aiThreshold}
-                      onChange={(e) => setAiThreshold(parseInt(e.target.value))}
-                      onMouseUp={saveSettings} // Save when slider is released
-                      onTouchEnd={saveSettings} // Save when touch ends (for touch devices)
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <span className="font-semibold text-blue-600 w-12 text-right">{aiThreshold}%</span>
+            return (
+              <div className="max-w-4xl mx-auto p-6 font-inter">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="flex items-center mb-6">
+                    <Settings className="h-8 w-8 text-blue-600 mr-3" />
+                    <h1 className="text-3xl font-bold text-gray-900">Teacher Settings</h1>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Papers with AI probability above this threshold will be flagged and will not proceed to rubric assessment.
-                  </p>
-                </div> */}
 
-                {/* Rubric Settings Section */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Rubric Criteria Management</h3>
-                  
-                  {/* Add New Criterion Form */}
-                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-gray-800 mb-3">Add New Criterion</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      <input
-                        type="text"
-                        placeholder="Criterion name (e.g., Clarity)"
-                        value={newCriterion.criterion}
-                        onChange={(e) => setNewCriterion({...newCriterion, criterion: e.target.value})}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  {/* Rubric Settings Section */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Rubric Criteria Management</h3>
+                    
+                    {/* Add New Criterion Form */}
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-gray-800 mb-3">Add New Criterion</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <input
+                          type="text"
+                          placeholder="Criterion name (e.g., Clarity)"
+                          value={newCriterion.criterion}
+                          onChange={(e) => setNewCriterion({...newCriterion, criterion: e.target.value})}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Weight (%) (e.g., 20)"
+                          value={newCriterion.weight}
+                          onChange={(e) => setNewCriterion({...newCriterion, weight: e.target.value})}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          min="0"
+                          max="100"
+                        />
+                        <button
+                          onClick={addCriterion}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400"
+                          disabled={!newCriterion.criterion || !newCriterion.weight || !newCriterion.description || isSavingSettings}
+                        >
+                          {isSavingSettings ? 'Saving...' : 'Add Criterion'}
+                        </button>
+                      </div>
+                      <textarea
+                        placeholder="Description (e.g., The clarity of ideas and arguments)"
+                        value={newCriterion.description}
+                        onChange={(e) => setNewCriterion({...newCriterion, description: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 min-h-[60px]"
+                        rows="2"
                       />
-                      <input
-                        type="number"
-                        placeholder="Weight (%) (e.g., 20)"
-                        value={newCriterion.weight}
-                        onChange={(e) => setNewCriterion({...newCriterion, weight: e.target.value})}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                        min="0"
-                        max="100"
-                      />
+                    </div>
+
+                    {/* Current Criteria List - Rendered by React */}
+                    <div className="space-y-4">
+                      {rubricSettings.length === 0 ? (
+                        <p className="text-gray-600 text-center p-4 bg-white rounded-lg border border-gray-200">No rubric criteria added yet. Add some above!</p>
+                      ) : (
+                        rubricSettings.map((criterion) => (
+                          <div key={criterion.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                            <div className="flex-1 mb-2 sm:mb-0">
+                              <input
+                                type="text"
+                                value={criterion.criterion}
+                                onChange={(e) => handleCriterionChange(criterion.id, 'criterion', e.target.value)}
+                                className="w-full text-lg font-medium text-gray-800 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <textarea
+                                value={criterion.description}
+                                onChange={(e) => handleCriterionChange(criterion.id, 'description', e.target.value)}
+                                className="w-full text-sm text-gray-600 mt-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows="2"
+                                placeholder="Description"
+                              ></textarea>
+                            </div>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              <input
+                                type="number"
+                                value={criterion.weight}
+                                onChange={(e) => handleCriterionChange(criterion.id, 'weight', e.target.value)}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-gray-600">%</span>
+                              <button
+                                onClick={() => removeCriterion(criterion.id)}
+                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                                disabled={isSavingSettings}
+                              >
+                                <Loader2 className="h-5 w-5" /> {/* Using Loader2 as a placeholder for trash-2 */}
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Total Weight Summary */}
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                      <p className="text-sm">
+                        Total Weight: <span className={`font-semibold ${totalWeight !== 100 ? 'text-red-700' : ''}`}>{totalWeight}%</span>
+                        {totalWeight !== 100 && 
+                          <span className="font-semibold text-red-700"> (Warning: Total weight should ideally equal 100%)</span>
+                        }
+                      </p>
                       <button
-                        onClick={addCriterion}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400"
-                        disabled={!newCriterion.criterion || !newCriterion.weight || !newCriterion.description || isSavingSettings}
+                        onClick={saveSettings}
+                        disabled={isSavingSettings}
+                        className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-400"
                       >
-                        {isSavingSettings ? 'Saving...' : 'Add Criterion'}
+                        {isSavingSettings ? 'Saving Settings...' : 'Save Settings Now'}
                       </button>
                     </div>
-                    <textarea
-                      placeholder="Description (e.g., The clarity of ideas and arguments)"
-                      value={newCriterion.description}
-                      onChange={(e) => setNewCriterion({...newCriterion, description: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 min-h-[60px]"
-                      rows="2"
-                    />
-                  </div>
-
-                  {/* Current Criteria List */}
-                  <div className="space-y-4">
-                    {rubricSettings.length === 0 && (
-                      <p className="text-gray-600 text-center p-4 bg-white rounded-lg border border-gray-200">No rubric criteria added yet. Add some above!</p>
-                    )}
-                    {rubricSettings.map((criterion) => (
-                      <div key={criterion.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                        <div className="flex-1 mb-2 sm:mb-0">
-                          <h4 className="font-medium text-gray-900 text-lg">{criterion.criterion}</h4>
-                          <p className="text-sm text-gray-600">{criterion.description}</p>
-                        </div>
-                        <div className="flex items-center space-x-4 flex-shrink-0">
-                          <span className="text-base font-medium text-blue-700">{criterion.weight}%</span>
-                          <button
-                            onClick={() => removeCriterion(criterion.id)}
-                            className="text-red-600 hover:text-red-800 transition-colors px-3 py-1 rounded-md border border-red-300 hover:border-red-500"
-                            disabled={isSavingSettings}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total Weight Summary */}
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-                    <p className="text-sm">
-                      Total Weight: <span className="font-semibold">{rubricSettings.reduce((sum, r) => sum + r.weight, 0)}%</span>
-                      {rubricSettings.reduce((sum, r) => sum + r.weight, 0) !== 100 && 
-                        <span className="font-semibold text-red-700"> (Warning: Total weight should ideally equal 100%)</span>
-                      }
-                    </p>
-                    <button
-                      onClick={saveSettings}
-                      disabled={isSavingSettings}
-                      className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-400"
-                    >
-                      {isSavingSettings ? 'Saving...' : 'Save Settings Now'}
-                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          );
+            );
+          };
 
           return (
             <div className="min-h-screen bg-gray-100 font-inter">
