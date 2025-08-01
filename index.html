@@ -164,6 +164,17 @@
             </IconWrapper>
         );
 
+        // Define Trash2 icon (missing in previous version)
+        const Trash2 = (props) => (
+            <IconWrapper {...props}>
+                <path d="M3 6h18"/>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                <line x1="10" x2="10" y1="11" y2="17"/>
+                <line x1="14" x2="14" y1="11" y2="17"/>
+            </IconWrapper>
+        );
+
         const Loader2 = (props) => (
             <IconWrapper {...props}>
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -426,7 +437,7 @@ Text to analyze:
            */
           async function scoreWithGeminiRubric(text, rubricCriteria) {
               showMessage('📊 Scoring essay with Gemini rubric...', 'info');
-              const prompt = `You are an essay grading assistant. Grade the following essay based on the provided rubric criteria. For each criterion, provide a score from 1 to 5 (1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent) and give specific feedback. Also, provide overall comments for the essay.
+              const prompt = `You are an essay grading assistant. Grade the following essay based on the provided rubric criteria. For each criterion, provide a score from 1 to 5 (1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent) and give specific feedback that is a detailed narrative, explaining the score and how to improve. Also, provide overall comments for the essay that are detailed and narrative, covering strengths, weaknesses, and suggestions for improvement.
 
 Provide your response in JSON format with the following structure:
 {
@@ -436,11 +447,11 @@ Provide your response in JSON format with the following structure:
     // ... for all criteria you defined in the frontend
   },
   "feedback": {
-    "Criterion Name 1": "Specific feedback for this criterion, explaining why the score was given and how to improve.",
-    "Criterion Name 2": "Specific feedback for this criterion."
+    "Criterion Name 1": "Specific feedback for this criterion, explaining why the score was given and how to improve. This should be a detailed narrative and several sentences long.",
+    "Criterion Name 2": "Specific feedback for this criterion. This should be a detailed narrative and several sentences long."
     // ... for all criteria
   },
-  "overall_comments": "Overall comments on the essay's strengths and weaknesses, and suggestions for improvement."
+  "overall_comments": "Overall comments on the essay's strengths and weaknesses, and suggestions for improvement. This should be a detailed narrative and several paragraphs long, providing comprehensive insights."
 }
 
 Essay:
@@ -573,7 +584,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
               }]);
               setNewCriterion({ criterion: '', weight: '', description: '' });
               showMessage('Criterion Added', `Criterion "${newCriterion.criterion}" successfully added.`);
-              saveSettings(); // Save settings after change
+              // saveSettings(); // Removed direct save on add
             } else {
               showMessage('Incomplete Input', 'Please fill in all fields for the new criterion.');
             }
@@ -586,7 +597,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
           const removeCriterion = (id) => {
             setRubricSettings(rubricSettings.filter(r => r.id !== id));
             showMessage('Criterion Removed', 'Criterion successfully removed.');
-            saveSettings(); // Save settings after change
+            // saveSettings(); // Removed direct save on remove
           };
 
           // Function to handle changes in existing rubric criterion fields
@@ -596,8 +607,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                 criterion.id === id ? { ...criterion, [field]: field === 'weight' ? parseInt(value) || 0 : value } : criterion
               )
             );
-            // Save settings immediately after a change
-            saveSettings();
+            // saveSettings(); // Removed direct save on change
           };
 
 
@@ -755,6 +765,12 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                         </div>
                       ))}
                     </div>
+                    {rubricScore.overallComments && (
+                      <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
+                        <h4 className="font-semibold text-gray-800 mb-2">Overall Comments:</h4>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{rubricScore.overallComments}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -852,7 +868,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                                 className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
                                 disabled={isSavingSettings}
                               >
-                                <Loader2 className="h-5 w-5" /> {/* Using Loader2 as a placeholder for trash-2 */}
+                                <Trash2 className="h-5 w-5" /> {/* Menggunakan ikon Trash2 yang baru didefinisikan */}
                               </button>
                             </div>
                           </div>
