@@ -3,400 +3,377 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Essay Grading System (Pure HTML & Ollama)</title>
-    <!-- Mammoth.js for DOCX parsing - ENSURE THIS FILE IS IN THE SAME FOLDER AS index.html -->
-    <!-- You can download it from: https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js -->
-    <script src="./mammoth.browser.min.js"></script>
+    <title>Sistem Penilaian Makalah</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            margin: 0;
-            background-color: #f3f4f6;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        /* Custom scrollbar for better appearance */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-            cursor: pointer;
         }
     </style>
 </head>
-<body class="antialiased">
-    <nav class="bg-white shadow-sm border-b">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-4">
-                    <i data-lucide="pen-tool" class="h-8 w-8 text-blue-600"></i>
-                    <span class="text-xl font-bold text-gray-900">EssayChecker Pro</span>
-                </div>
-                <div class="flex space-x-4">
-                    <button id="studentViewBtn" class="px-4 py-2 rounded-lg transition-colors bg-blue-600 text-white">
-                        <i data-lucide="user" class="inline h-4 w-4 mr-2"></i>
-                        Student View
-                    </button>
-                    <button id="teacherViewBtn" class="px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-blue-600">
-                        <i data-lucide="settings" class="inline h-4 w-4 mr-2"></i>
-                        Teacher Settings
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
+<body>
+    <div id="root"></div>
 
-    <main class="flex-grow p-6">
-        <div id="studentView" class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <div class="text-center mb-8">
-                    <i data-lucide="file-text" class="mx-auto h-16 w-16 text-blue-600 mb-4"></i>
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Essay Grading System</h1>
-                    <p class="text-gray-600">Upload your essay for AI detection and rubric-based evaluation</p>
-                </div>
+    <!-- React CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Mammoth.js for DOCX parsing -->
+    <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Firebase SDKs diimpor di sini dan akan tersedia secara global sebagai `firebase`
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-                <div class="mb-8">
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                        <i data-lucide="upload" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
-                        <div class="mb-4">
-                            <button id="chooseFileBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                Choose DOCX File
-                            </button>
-                            <input type="file" id="fileInput" accept=".docx" class="hidden">
-                        </div>
-                        <div id="fileInfo" class="text-sm text-gray-600 hidden">
-                            <p>Selected: <span id="fileName"></span></p>
-                            <p>Size: <span id="fileSize"></span> KB</p>
-                        </div>
-                    </div>
-                </div>
+        // Firebase configuration Anda
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaQvBO3cdPZGpuqoK5BFfmMBAOQ_Axdl4",
+            authDomain: "paper-assesment-01.firebaseapp.com",
+            projectId: "paper-assesment-01",
+            storageBucket: "paper-assesment-01.firebasestorage.app",
+            messagingSenderId: "79926020514",
+            appId: "1:79926020514:web:f1d38c53ef9ee7df5dcafb"
+        };
 
-                <div id="extractedTextPreview" class="mb-8 hidden">
-                    <h3 class="text-lg font-semibold mb-2">Document Preview:</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto">
-                        <p id="previewText" class="text-sm text-gray-700"></p>
-                    </div>
-                </div>
+        // Variabel global ini diharapkan oleh komponen React
+        // Di lingkungan Canvas, ini akan disediakan secara otomatis.
+        // Untuk pengujian lokal, kita mendefinisikannya di sini.
+        window.__app_id = firebaseConfig.projectId; // Menggunakan projectId sebagai appId
+        window.__firebase_config = JSON.stringify(firebaseConfig);
+        window.__initial_auth_token = null; // Biarkan null untuk masuk anonim secara default jika tidak ada token kustom
 
-                <div class="text-center">
-                    <button id="submitBtn" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors" disabled>
-                        Submit for Assessment
-                    </button>
-                </div>
+        // Membuat objek `firebase` global agar fungsi-fungsi dapat diakses di <script type="text/babel">
+        window.firebase = {
+            initializeApp: initializeApp,
+            auth: {
+                getAuth: getAuth,
+                signInAnonymously: signInAnonymously,
+                signInWithCustomToken: signInWithCustomToken,
+                onAuthStateChanged: onAuthStateChanged
+            },
+            firestore: {
+                getFirestore: getFirestore,
+                doc: doc,
+                setDoc: setDoc,
+                onSnapshot: onSnapshot
+            }
+        };
+    </script>
 
-                <div id="messageBox" class="mt-4 p-4 rounded-lg hidden"></div>
+    <script type="text/babel">
+        // Utility function to display custom messages (replaces alert())
+        const showMessage = (title, message, type = 'info') => {
+          console.log(`${title}: ${message}`);
+        };
 
-                <div id="aiDetectionResults" class="mt-8 p-6 bg-gray-50 rounded-lg hidden">
-                    <div class="flex items-center mb-4">
-                        <span id="aiStatusIcon"></span>
-                        <h3 class="text-xl font-semibold">AI Detection Results (Powered by Ollama)</h3>
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-600">AI Probability</p>
-                            <p id="aiProbability" class="text-2xl font-bold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Confidence Level</p>
-                            <p id="aiConfidence" class="text-lg font-semibold text-blue-600"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Status</p>
-                            <p id="aiOverallStatus" class="text-lg font-semibold"></p>
-                        </div>
-                    </div>
+        // --- Lucide Icons as React Components (Manually Defined) ---
+        // This is a workaround for using Lucide icons directly in a browser without a build step.
+        const IconWrapper = ({ children, className, ...props }) => (
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={className}
+                {...props}
+            >
+                {children}
+            </svg>
+        );
 
-                    <div class="grid md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <p class="text-sm text-gray-600">Word Count</p>
-                            <p id="wordCount" class="font-semibold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Sentences</p>
-                            <p id="sentenceCount" class="font-semibold"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-600">Average Sentence Length</p>
-                            <p id="avgSentenceLength" class="font-semibold"></p>
-                        </div>
-                    </div>
+        const Upload = (props) => (
+            <IconWrapper {...props}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" x2="12" y1="3" y2="15"/>
+            </IconWrapper>
+        );
 
-                    <div id="aiFlagsContainer" class="hidden">
-                        <p class="text-sm text-gray-600 mb-2">Detection Flags:</p>
-                        <ul id="aiFlags" class="text-sm space-y-1"></ul>
-                    </div>
-                </div>
+        const Settings = (props) => (
+            <IconWrapper {...props}>
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.78 1.22a2 2 0 0 0 .73 2.73l.09.09a2 2 0 0 1 .73 2l-.09.1a2 2 0 0 0 .73 2.73l.78 1.22a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.78-1.22a2 2 0 0 0-.73-2.73l-.09-.09a2 2 0 0 1-.73-2l.09-.1a2 2 0 0 0-.73-2.73l-.78-1.22a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </IconWrapper>
+        );
 
-                <div id="rubricAssessmentResults" class="mt-8 p-6 bg-blue-50 rounded-lg hidden">
-                    <div class="flex items-center mb-4">
-                        <i data-lucide="bar-chart-3" class="h-6 w-6 text-blue-600 mr-2"></i>
-                        <h3 class="text-xl font-semibold">Rubric Assessment Results (Powered by Ollama)</h3>
-                    </div>
-                    
-                    <div class="text-center mb-6">
-                        <div id="overallScore" class="text-4xl font-bold text-blue-600 mb-2"></div>
-                        <p class="text-gray-600">Overall Score</p>
-                    </div>
+        const FileText = (props) => (
+            <IconWrapper {...props}>
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L15 2z"/>
+                <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                <path d="M10 9H8"/>
+                <path d="M16 13H8"/>
+                <path d="M16 17H8"/>
+            </IconWrapper>
+        );
 
-                    <div id="overallCommentsContainer" class="mb-6 p-4 bg-white border border-blue-200 rounded-lg hidden">
-                        <h4 class="font-medium text-blue-800 mb-2">Overall Comments:</h4>
-                        <p id="overallComments" class="text-sm text-gray-700"></p>
-                    </div>
+        const AlertTriangle = (props) => (
+            <IconWrapper {...props}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" x2="12" y1="9" y2="13"/>
+                <line x1="12" x2="12.01" y1="17" y2="17"/>
+            </IconWrapper>
+        );
 
-                    <div id="rubricBreakdown" class="space-y-4">
-                        <!-- Rubric breakdown items will be inserted here -->
-                    </div>
-                </div>
-            </div>
-        </div>
+        const CheckCircle = (props) => (
+            <IconWrapper {...props}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-8.16"/>
+                <path d="m9 11 3 3L22 4"/>
+            </IconWrapper>
+        );
 
-        <div id="teacherSettings" class="max-w-4xl mx-auto hidden">
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <div class="flex items-center mb-6">
-                    <i data-lucide="settings" class="h-8 w-8 text-blue-600 mr-3"></i>
-                    <h1 class="text-3xl font-bold text-gray-900">Teacher Settings</h1>
-                </div>
+        const User = (props) => (
+            <IconWrapper {...props}>
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </IconWrapper>
+        );
 
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold mb-4">Rubric Criteria</h3>
-                    
-                    <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-                        <h4 class="font-medium mb-3">Add New Criterion</h4>
-                        <div class="grid md:grid-cols-3 gap-4 mb-3">
-                            <input type="text" id="newCriterionName" placeholder="Criterion name" class="px-3 py-2 border border-gray-300 rounded-lg">
-                            <input type="number" id="newCriterionWeight" placeholder="Weight (%)" class="px-3 py-2 border border-gray-300 rounded-lg" value="0">
-                            <button id="addCriterionBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                                Add Criterion
-                            </button>
-                        </div>
-                        <input type="text" id="newCriterionDescription" placeholder="Description" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    </div>
+        const PenTool = (props) => (
+            <IconWrapper {...props}>
+                <path d="m12 19 7-7 3 3-7 7-3-3z"/>
+                <path d="m18 13-1.5-7.5L2 2l7.5 1.5L18 13z"/>
+                <path d="m2 2 7.5 7.5"/>
+                <path d="m13 18 7.5-7.5"/>
+            </IconWrapper>
+        );
 
-                    <div id="rubricSettingsList" class="space-y-4">
-                        <!-- Rubric settings items will be inserted here -->
-                    </div>
+        const BarChart3 = (props) => (
+            <IconWrapper {...props}>
+                <path d="M3 3v18h18"/>
+                <path d="M18 17V9"/>
+                <path d="M13 17V5"/>
+                <path d="M8 17v-3"/>
+            </IconWrapper>
+        );
 
-                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p class="text-sm text-yellow-800">
-                            Total Weight: <span id="totalWeightDisplay"></span>%
-                            <span id="totalWeightWarning" class="font-semibold hidden"> (Must be 100%)</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+        const Loader2 = (props) => (
+            <IconWrapper {...props}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </IconWrapper>
+        );
+        // --- End Lucide Icons ---
 
-    <script>
-        // URL for Ollama API. Adjust if your Ollama runs on a different port or host.
-        const OLLAMA_URL = 'http://localhost:11434/api/generate';
-        // IMPORTANT: Adjust to the CORRECT MODEL NAME in your Ollama.
-        // You can check by running 'ollama list' in your terminal.
-        // Common text generation models: 'llama2', 'mistral', 'gemma', 'phi3'
-        const OLLAMA_MODEL = 'gemma3:latest'; // Updated to gemma3:latest
+        const App = () => {
+          // Global variables provided by the Canvas environment or defined above for local testing
+          const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+          const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
 
-        // Initial setup on window load to ensure all resources and DOM are ready
-        window.onload = () => {
-            // Log mammoth.js status when window.onload is executed
-            console.log('Mammoth.js loaded status (inside window.onload):', typeof mammoth);
+          // Firebase configuration (now accessed from window for local HTML)
+          const firebaseConfig = typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : {};
 
-            // DOM Elements
-            const studentViewBtn = document.getElementById('studentViewBtn');
-            const teacherViewBtn = document.getElementById('teacherViewBtn');
-            const studentView = document.getElementById('studentView');
-            const teacherSettings = document.getElementById('teacherSettings');
+          // Firebase state
+          const [db, setDb] = React.useState(null);
+          const [auth, setAuth] = React.useState(null);
+          const [userId, setUserId] = React.useState(null);
+          const [isAuthReady, setIsAuthReady] = React.useState(false);
 
-            const fileInput = document.getElementById('fileInput');
-            const chooseFileBtn = document.getElementById('chooseFileBtn');
-            const fileInfo = document.getElementById('fileInfo');
-            const fileNameSpan = document.getElementById('fileName');
-            const fileSizeSpan = document.getElementById('fileSize');
-            const extractedTextPreview = document.getElementById('extractedTextPreview');
-            const previewText = document.getElementById('previewText');
-            const submitBtn = document.getElementById('submitBtn');
-            const messageBox = document.getElementById('messageBox');
+          // Application state
+          const [currentView, setCurrentView] = React.useState('student');
+          const [file, setFile] = React.useState(null);
+          const [extractedText, setExtractedText] = React.useState('');
+          const [isProcessing, setIsProcessing] = React.useState(false);
+          const [aiDetectionResult, setAiDetectionResult] = React.useState(null);
+          const [rubricScore, setRubricScore] = React.useState(null);
+          const [rubricSettings, setRubricSettings] = React.useState([
+            { id: 1, criterion: 'Thesis Statement', weight: 20, description: 'Clear, arguable thesis that guides the essay' },
+            { id: 2, criterion: 'Evidence & Support', weight: 25, description: 'Strong evidence and examples that support arguments' },
+            { id: 3, criterion: 'Organization', weight: 20, description: 'Logical structure and smooth transitions' },
+            { id: 4, criterion: 'Writing Quality', weight: 20, description: 'Grammar, syntax, and style' },
+            { id: 5, criterion: 'Critical Thinking', weight: 15, description: 'Analysis, evaluation, and original thought' }
+          ]);
+          // AI Threshold state is no longer needed as the section is removed
+          // const [aiThreshold, setAiThreshold] = React.useState(10);
+          const [newCriterion, setNewCriterion] = React.useState({ criterion: '', weight: '', description: '' });
+          const [isSavingSettings, setIsSavingSettings] = React.useState(false);
+          const [isSettingsLoaded, setIsSettingsLoaded] = React.useState(false);
 
-            const aiDetectionResults = document.getElementById('aiDetectionResults');
-            const aiStatusIcon = document.getElementById('aiStatusIcon');
-            const aiProbability = document.getElementById('aiProbability');
-            const aiConfidence = document.getElementById('aiConfidence');
-            const aiOverallStatus = document.getElementById('aiOverallStatus');
-            const wordCountSpan = document.getElementById('wordCount');
-            const sentenceCountSpan = document.getElementById('sentenceCount');
-            const avgSentenceLengthSpan = document.getElementById('avgSentenceLength');
-            const aiFlagsContainer = document.getElementById('aiFlagsContainer');
-            const aiFlagsList = document.getElementById('aiFlags');
+          const fileInputRef = React.useRef(null);
 
-            const rubricAssessmentResults = document.getElementById('rubricAssessmentResults');
-            const overallScore = document.getElementById('overallScore');
-            const overallCommentsContainer = document.getElementById('overallCommentsContainer');
-            const overallComments = document.getElementById('overallComments');
-            const rubricBreakdown = document.getElementById('rubricBreakdown');
+          // Initialize Firebase and Authentication
+          React.useEffect(() => {
+            try {
+              // Access Firebase functions from the global scope (loaded by the module script)
+              const app = firebase.initializeApp(firebaseConfig);
+              const firestore = firebase.firestore.getFirestore(app);
+              const authInstance = firebase.auth.getAuth(app);
+              setDb(firestore);
+              setAuth(authInstance);
 
-            const newCriterionNameInput = document.getElementById('newCriterionName');
-            const newCriterionWeightInput = document.getElementById('newCriterionWeight');
-            const newCriterionDescriptionInput = document.getElementById('newCriterionDescription');
-            const addCriterionBtn = document.getElementById('addCriterionBtn');
-            const rubricSettingsList = document.getElementById('rubricSettingsList');
-            const totalWeightDisplay = document.getElementById('totalWeightDisplay'); // Corrected
-            const totalWeightWarning = document.getElementById('totalWeightWarning');
-
-            // Variables
-            let currentFile = null;
-            let extractedDocText = '';
-            // Retrieve rubric settings from localStorage or use defaults
-            let rubricSettings = JSON.parse(localStorage.getItem('rubricSettings')) || [
-                { id: 1, criterion: 'Good and correct grammar', weight: 40, description: 'Correct and effective use of grammar and sentence structure.' },
-                { id: 2, criterion: 'Correct spelling & no typos', weight: 30, description: 'Accuracy in spelling, punctuation, and absence of typographical errors.' },
-                { id: 3, criterion: 'Relevance to the folklore topic', weight: 30, description: 'How well the essay reflects the characteristics and themes of folklore.' }
-            ];
-
-            // --- Utility Functions ---
-            function showMessage(message, type = 'info') {
-                messageBox.textContent = message;
-                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-                messageBox.classList.add('block');
-                if (type === 'error') {
-                    messageBox.classList.add('bg-red-100', 'text-red-700');
-                } else if (type === 'success') {
-                    messageBox.classList.add('bg-green-100', 'text-green-700');
+              const unsubscribe = firebase.auth.onAuthStateChanged(authInstance, async (user) => {
+                if (user) {
+                  setUserId(user.uid);
                 } else {
-                    messageBox.classList.add('bg-blue-100', 'text-blue-700');
-                }
-            }
-
-            function hideMessage() {
-                messageBox.classList.add('hidden');
-            }
-
-            function clearResults() {
-                aiDetectionResults.classList.add('hidden');
-                rubricAssessmentResults.classList.add('hidden');
-                hideMessage();
-            }
-
-            // --- View Switching ---
-            studentViewBtn.addEventListener('click', () => {
-                studentView.classList.remove('hidden');
-                teacherSettings.classList.add('hidden');
-                studentViewBtn.classList.add('bg-blue-600', 'text-white');
-                studentViewBtn.classList.remove('text-gray-600', 'hover:text-blue-600');
-                teacherViewBtn.classList.remove('bg-blue-600', 'text-white');
-                teacherViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
-                clearResults(); // Clear results when switching views
-                lucide.createIcons(); // Re-render Lucide icons
-            });
-
-            teacherViewBtn.addEventListener('click', () => {
-                studentView.classList.add('hidden');
-                teacherSettings.classList.remove('hidden');
-                teacherViewBtn.classList.add('bg-blue-600', 'text-white');
-                teacherViewBtn.classList.remove('text-gray-600', 'hover:text-blue-600');
-                studentViewBtn.classList.remove('bg-blue-600', 'text-white');
-                studentViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
-                renderRubricSettings(); // Render settings when view is active
-                lucide.createIcons(); // Re-render Lucide icons
-            });
-
-            // --- File Upload ---
-            chooseFileBtn.addEventListener('click', () => fileInput.click());
-
-            fileInput.addEventListener('change', async (event) => {
-                const uploadedFile = event.target.files[0];
-                if (uploadedFile && uploadedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                    currentFile = uploadedFile;
-                    fileNameSpan.textContent = uploadedFile.name;
-                    fileSizeSpan.textContent = (uploadedFile.size / 1024).toFixed(1);
-                    fileInfo.classList.remove('hidden');
-                    submitBtn.disabled = false;
-                    clearResults();
-                    hideMessage();
-
-                    try {
-                        if (typeof mammoth === 'undefined' || !mammoth.extractRawText) {
-                            throw new Error('mammoth.js is not loaded or ready. Make sure "mammoth.browser.min.js" is in the same directory as index.html.');
-                        }
-                        const arrayBuffer = await uploadedFile.arrayBuffer();
-                        const result = await mammoth.extractRawText({ arrayBuffer });
-                        extractedDocText = result.value;
-                        previewText.textContent = extractedDocText.substring(0, 500) + (extractedDocText.length > 500 ? '...' : '');
-                        extractedTextPreview.classList.remove('hidden');
-                    } catch (error) {
-                        console.error('Error extracting text from DOCX:', error);
-                        showMessage(`Error reading document: ${error.message}. Make sure it's a valid .docx file and try again.`, 'error');
-                        submitBtn.disabled = true;
-                        extractedTextPreview.classList.add('hidden');
-                    }
-                } else {
-                    showMessage('Please upload only .docx files.', 'error');
-                    currentFile = null;
-                    extractedDocText = '';
-                    fileInfo.classList.add('hidden');
-                    submitBtn.disabled = true;
-                    extractedTextPreview.classList.add('hidden');
-                }
-            });
-
-            // --- Ollama API Calls ---
-            async function callOllama(prompt) {
-                try {
-                    const response = await fetch(OLLAMA_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: OLLAMA_MODEL,
-                            prompt: prompt,
-                            stream: false
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json(); 
-                        throw new Error(`Ollama API error: ${response.status} - ${errorData.error || response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    let ollamaResponseText = data.response;
-
-                    // Remove Markdown code block if present
-                    const jsonMatch = ollamaResponseText.match(/```json\n([\s\S]*?)\n```/);
-                    if (jsonMatch && jsonMatch[1]) {
-                        ollamaResponseText = jsonMatch[1];
+                  try {
+                    if (initialAuthToken) {
+                      await firebase.auth.signInWithCustomToken(authInstance, initialAuthToken);
                     } else {
-                        // If no code block, try to remove just backticks if present
-                        ollamaResponseText = ollamaResponseText.replace(/```/g, '').trim();
+                      await firebase.auth.signInAnonymously(authInstance);
                     }
-
-                    // Parse the cleaned JSON string
-                    return JSON.parse(ollamaResponseText);
-
-                } catch (error) {
-                    console.error('Ollama call error:', error);
-                    throw error; // Re-throw to be handled in the calling function
+                    setUserId(authInstance.currentUser?.uid || crypto.randomUUID());
+                  } catch (error) {
+                    console.error("Error signing in anonymously or with token:", error);
+                    showMessage('Authentication Error', 'Could not sign in to Firebase. Some features may not function.');
+                    setUserId(crypto.randomUUID());
+                  }
                 }
-            }
+                setIsAuthReady(true);
+              });
 
-            async function detectAIContent(text) {
-                showMessage('🤖 Analyzing text for AI content...', 'info');
-                const prompt = `You are an AI detection system. Analyze the following text and determine the probability that this text was written by an AI. Provide your response in JSON format with the following structure:
+              return () => unsubscribe();
+            } catch (error) {
+              console.error("Firebase initialization error:", error);
+              showMessage('Initialization Error', 'Firebase failed to initialize. Check your configuration.');
+              setIsAuthReady(true);
+            }
+          }, []);
+
+          // Load settings from Firestore when authentication is ready
+          React.useEffect(() => {
+            if (isAuthReady && db && userId) {
+              const currentAppId = firebaseConfig.projectId;
+              const settingsDocRef = firebase.firestore.doc(db, `artifacts/${currentAppId}/users/${userId}/settings/appSettings`);
+              const unsubscribe = firebase.firestore.onSnapshot(settingsDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                  const data = docSnap.data();
+                  setRubricSettings(data.rubricSettings || []);
+                  // AI Threshold state is no longer needed
+                  // setAiThreshold(data.aiThreshold || 10);
+                  showMessage('Settings Loaded', 'Rubric settings loaded successfully.');
+                } else {
+                  showMessage('Settings', 'No settings found in Firestore. Using default settings.');
+                }
+                setIsSettingsLoaded(true);
+              }, (error) => {
+                console.error("Error loading settings from Firestore:", error);
+                showMessage('Firestore Error', 'Failed to load settings. Check your connection.');
+                setIsSettingsLoaded(true);
+              });
+
+              return () => unsubscribe();
+            }
+          }, [isAuthReady, db, userId, firebaseConfig.projectId]);
+
+          // Save settings to Firestore
+          const saveSettings = async () => {
+            if (!db || !userId) {
+              showMessage('Error', 'Firebase is not ready or user ID is unavailable.');
+              return;
+            }
+            setIsSavingSettings(true);
+            try {
+              const currentAppId = firebaseConfig.projectId;
+              const settingsDocRef = firebase.firestore.doc(db, `artifacts/${currentAppId}/users/${userId}/settings/appSettings`);
+              await firebase.firestore.setDoc(settingsDocRef, {
+                rubricSettings,
+                // aiThreshold, // AI Threshold is no longer saved
+                lastUpdated: new Date()
+              }, { merge: true });
+              showMessage('Settings Saved', 'Settings successfully saved to Firestore.');
+            } catch (error) {
+              console.error("Error saving settings to Firestore:", error);
+              showMessage('Save Error', 'Failed to save settings. Please try again.');
+            } finally {
+              setIsSavingSettings(false);
+            }
+          };
+
+          /**
+           * Handles the file upload event.
+           * Extracts text from a .docx file using Mammoth.js.
+           * Displays a message if the file is not a .docx.
+           * @param {Event} event The file input change event.
+           */
+          const handleFileUpload = async (event) => {
+            const uploadedFile = event.target.files[0];
+            if (uploadedFile && uploadedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+              setFile(uploadedFile);
+              
+              try {
+                const arrayBuffer = await uploadedFile.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                setExtractedText(result.value);
+                showMessage('File Uploaded', `File "${uploadedFile.name}" uploaded and text extracted.`);
+              } catch (error) {
+                console.error('Error extracting text from DOCX:', error);
+                showMessage('Document Read Error', 'Error reading the document. Please try again. Ensure it is a valid DOCX file.');
+              }
+            } else {
+              showMessage('Invalid File Type', 'Please upload a .docx file only.');
+            }
+          };
+
+          /**
+           * Calls the Gemini API to generate content.
+           * @param {string} promptText The text prompt to send to the Gemini model.
+           * @param {object} generationConfig Optional configuration for text generation.
+           * @returns {Promise<string>} The generated text response.
+           */
+          async function callGeminiAPI(promptText, generationConfig = {}) {
+              const API_KEY = "AIzaSyAq71Famse8z1JTjMJw9NaXQSG3a7Ea0eU"; // Kunci API Gemini Anda
+              const MODEL_NAME = "gemini-pro"; // Atau model Gemini lainnya
+              const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+              const payload = {
+                  contents: [{
+                      parts: [{ text: promptText }]
+                  }],
+                  generationConfig: {
+                      temperature: 0.7, // Default temperature
+                      topK: 40,
+                      topP: 0.95,
+                      maxOutputTokens: 1024,
+                      ...generationConfig // Override with provided config
+                  }
+              };
+
+              try {
+                  const response = await fetch(API_URL, {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(payload),
+                  });
+
+                  if (!response.ok) {
+                      const errorData = await response.json();
+                      throw new Error(`Gemini API error: ${response.status} - ${errorData.error.message || response.statusText}`);
+                  }
+
+                  const result = await response.json();
+                  if (result.candidates && result.candidates.length > 0 &&
+                      result.candidates[0].content && result.candidates[0].content.parts &&
+                      result.candidates[0].content.parts.length > 0) {
+                      return result.candidates[0].content.parts[0].text;
+                  } else {
+                      throw new Error("Unexpected Gemini API response structure.");
+                  }
+
+              } catch (error) {
+                  console.error('Error calling Gemini API:', error);
+                  throw error;
+              }
+          }
+
+          /**
+           * Uses Gemini API for AI content detection.
+           * @param {string} text The text content to analyze.
+           * @returns {object} An object containing AI probability, word count, sentence count, avg sentence length, and flags.
+           */
+          async function detectAIContent(text) {
+              showMessage('🤖 Analyzing text for AI content using Gemini...', 'info');
+              const prompt = `You are an AI detection system. Analyze the following text and determine the probability that this text was written by an AI. Provide your response in JSON format with the following structure:
 {
   "ai_probability": <integer_percentage_0_100>,
   "confidence": <integer_confidence_level_0_100>,
@@ -406,46 +383,54 @@
 Text to analyze:
 "${text}"`;
 
-                try {
-                    const result = await callOllama(prompt);
-                    hideMessage();
-                    return {
-                        probability: result.ai_probability || 0,
-                        confidence: result.confidence || 0,
-                        flags: result.flags || [],
-                        wordCount: text.split(/\s+/).filter(word => word.length > 0).length, // More robust word count
-                        sentenceCount: text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length, // More robust sentence count
-                        avgSentenceLength: Math.round(text.split(/[.!?]\s*/).filter(s => s.trim().length > 10)
-                            .reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / 
-                            (text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length || 1)) 
-                    };
-                } catch (error) {
-                    console.error('AI Detection Error:', error);
-                    showMessage('AI detection failed. Using fallback analysis. Ensure Ollama is running and the selected model supports text generation.', 'error');
-                    const sentences = text.split(/[.!?]\s*/).filter(s => s.trim().length > 20);
-                    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
-                    const avgSentenceLength = sentences.reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / (sentences.length || 1);
-                    
-                    return {
-                        probability: Math.floor(Math.random() * 30),
-                        confidence: 75,
-                        flags: ['Service unavailable - using fallback analysis'],
-                        wordCount,
-                        sentenceCount: sentences.length,
-                        avgSentenceLength: Math.round(avgSentenceLength)
-                    };
-                }
-            }
+              try {
+                  const geminiResponseText = await callGeminiAPI(prompt, { responseMimeType: "application/json" });
+                  const aiData = JSON.parse(geminiResponseText);
+                  
+                  hideMessage();
+                  return {
+                      probability: aiData.ai_probability || 0,
+                      confidence: aiData.confidence || 0,
+                      flags: aiData.flags || [],
+                      wordCount: text.split(/\s+/).filter(word => word.length > 0).length,
+                      sentenceCount: text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length,
+                      avgSentenceLength: Math.round(text.split(/[.!?]\s*/).filter(s => s.trim().length > 10)
+                          .reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / 
+                          (text.split(/[.!?]\s*/).filter(s => s.trim().length > 10).length || 1)) 
+                  };
+              } catch (error) {
+                  console.error('AI Detection Error with Gemini:', error);
+                  showMessage('AI detection failed with Gemini. Using fallback analysis. Check API key and network.', 'error');
+                  const sentences = text.split(/[.!?]\s*/).filter(s => s.trim().length > 20);
+                  const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+                  const avgSentenceLength = sentences.reduce((acc, s) => acc + s.split(/\s+/).filter(word => word.length > 0).length, 0) / (sentences.length || 1);
+                  
+                  return {
+                      probability: Math.floor(Math.random() * 30),
+                      confidence: 75,
+                      flags: ['Service unavailable - using fallback analysis'],
+                      wordCount,
+                      sentenceCount: sentences.length,
+                      avgSentenceLength: Math.round(avgSentenceLength)
+                  };
+              }
+          }
 
-            async function scoreWithOllamaRubric(text, rubricCriteria) {
-                showMessage('📊 Scoring essay with Ollama rubric...', 'info');
-                const prompt = `You are an essay grading assistant. Grade the following essay based on the provided rubric criteria. For each criterion, provide a score from 1 to 5 (1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent) and give specific feedback. Also, provide overall comments for the essay.
+          /**
+           * Uses Gemini API for rubric-based essay scoring.
+           * @param {string} text The text content to assess.
+           * @param {Array<object>} rubricCriteria The rubric criteria to use for assessment.
+           * @returns {object} An object containing individual criterion scores, total score, and a detailed breakdown.
+           */
+          async function scoreWithGeminiRubric(text, rubricCriteria) {
+              showMessage('📊 Scoring essay with Gemini rubric...', 'info');
+              const prompt = `You are an essay grading assistant. Grade the following essay based on the provided rubric criteria. For each criterion, provide a score from 1 to 5 (1=Poor, 2=Below Average, 3=Average, 4=Good, 5=Excellent) and give specific feedback. Also, provide overall comments for the essay.
 
 Provide your response in JSON format with the following structure:
 {
   "scores": {
     "Criterion Name 1": <integer_score>,
-    "Criterion Name 2": <integer_score>
+    ""Criterion Name 2": <integer_score>
     // ... for all criteria you defined in the frontend
   },
   "feedback": {
@@ -463,280 +448,472 @@ Rubric Criteria:
 ${JSON.stringify(rubricCriteria, null, 2)}
 `; 
 
-                try {
-                    const result = await callOllama(prompt);
-                    hideMessage();
-                    
-                    const individualScores = result.scores || {};
-                    let totalScore = 0;
-                    let totalWeight = 0;
-                    
-                    const breakdown = rubricCriteria.map(criterion => {
-                        // Ensure criterion name matches what Ollama might return, or use a fallback
-                        const score = individualScores[criterion.criterion] || 3; // Default score 3 if none
-                        const weightedScore = (score * criterion.weight / 5); // Score 1-5, multiplied by weight, divided by 5 for normalization
-                        totalScore += weightedScore;
-                        totalWeight += criterion.weight;
-                        
-                        return {
-                            ...criterion,
-                            score: score,
-                            weightedScore: weightedScore,
-                            feedback: result.feedback?.[criterion.criterion] || 'No specific feedback provided.'
-                        };
-                    });
-                    
-                    // Calculate final score based on totalScore and totalWeight
-                    const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100);
-                    
-                    return {
-                        individualScores,
-                        totalScore: finalScore,
-                        breakdown,
-                        overallComments: result.overall_comments || 'Assessment complete.'
-                    };
-                } catch (error) {
-                    console.error('Rubric Scoring Error:', error);
-                    showMessage('Rubric assessment failed. Using fallback analysis. Ensure Ollama is running and the selected model supports text generation.', 'error');
-                    const scores = {};
-                    let totalScore = 0;
-                    let totalWeight = 0;
+              try {
+                  const geminiResponseText = await callGeminiAPI(prompt, { responseMimeType: "application/json" });
+                  const rubricData = JSON.parse(geminiResponseText);
+                  
+                  hideMessage();
+                  
+                  const individualScores = rubricData.scores || {};
+                  let totalScore = 0;
+                  let totalWeight = 0;
+                  
+                  const breakdown = rubricCriteria.map(criterion => {
+                      const score = individualScores[criterion.criterion] || 3; // Default score 3 if none
+                      const weightedScore = (score * criterion.weight / 5); // Score 1-5, multiplied by weight, divided by 5 for normalization
+                      totalScore += weightedScore;
+                      totalWeight += criterion.weight;
+                      
+                      return {
+                          ...criterion,
+                          score: score,
+                          weightedScore: weightedScore,
+                          feedback: rubricData.feedback?.[criterion.criterion] || 'No specific feedback provided.'
+                      };
+                  });
+                  
+                  const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100);
+                  
+                  return {
+                      individualScores,
+                      totalScore: finalScore,
+                      breakdown,
+                      overallComments: rubricData.overall_comments || 'Assessment complete.'
+                  };
+              } catch (error) {
+                  console.error('Rubric Scoring Error with Gemini:', error);
+                  showMessage('Rubric assessment failed with Gemini. Using fallback analysis. Check API key and network.', 'error');
+                  const scores = {};
+                  let totalScore = 0;
+                  let totalWeight = 0;
 
-                    const breakdown = rubricCriteria.map(criterion => {
-                        let score = 3; // Fallback score
-                        scores[criterion.criterion] = score;
-                        totalScore += score * criterion.weight;
-                        totalWeight += criterion.weight; 
-                        
-                        return {
-                            ...criterion,
-                            score: score,
-                            weightedScore: (score * criterion.weight / 5),
-                            feedback: 'Fallback feedback - Ollama service unavailable.'
-                        };
-                    });
+                  const breakdown = rubricCriteria.map(criterion => {
+                      let score = 3; // Fallback score
+                      scores[criterion.criterion] = score;
+                      totalScore += score * criterion.weight;
+                      totalWeight += criterion.weight; 
+                      
+                      return {
+                          ...criterion,
+                          score: score,
+                          weightedScore: (score * criterion.weight / 5),
+                          feedback: 'Fallback feedback - Gemini service unavailable.'
+                      };
+                  });
 
-                    const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100 / 5); 
-                    
-                    return {
-                        individualScores: scores,
-                        totalScore: finalScore,
-                        breakdown,
-                        overallComments: 'Assessment completed using fallback method - Ollama service unavailable. Results may be less accurate.'
-                    };
-                }
+                  const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100 / 5); 
+                  
+                  return {
+                      individualScores: scores,
+                      totalScore: finalScore,
+                      breakdown,
+                      overallComments: 'Assessment completed using fallback method - Gemini service unavailable. Results may be less accurate.'
+                  };
+              }
+          }
+
+          /**
+           * Handles the submission of the document for assessment.
+           * Performs AI detection first, then rubric assessment if AI probability is below threshold.
+           */
+          const handleSubmit = async () => {
+            if (!file || !extractedText) {
+              showMessage('Error', 'Please upload a document first.');
+              return;
             }
 
-            // --- Submit Assessment ---
-            submitBtn.addEventListener('click', async () => {
-                if (!currentFile || !extractedDocText) {
-                    showMessage('Please upload a document first.', 'error');
-                    return;
-                }
-
-                if (rubricSettings.length === 0) {
-                    showMessage('Please add at least one rubric criterion in Teacher Settings.', 'error');
-                    return;
-                }
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Processing...';
-                clearResults(); 
-
-                try {
-                    console.log('Running AI detection with Ollama...');
-                    const aiResult = await detectAIContent(extractedDocText);
-                    
-                    // Display AI Detection Results
-                    aiDetectionResults.classList.remove('hidden');
-                    aiProbability.textContent = `${aiResult.probability}%`;
-                    aiConfidence.textContent = `${aiResult.confidence}%`;
-                    wordCountSpan.textContent = aiResult.wordCount;
-                    sentenceCountSpan.textContent = aiResult.sentenceCount;
-                    avgSentenceLengthSpan.textContent = aiResult.avgSentenceLength;
-
-                    // Status icon and text based on AI probability
-                    if (aiResult.probability >= 50) { // Example: 50% and above is considered AI
-                        aiStatusIcon.innerHTML = '<i data-lucide="robot" class="h-6 w-6 text-red-600 mr-2"></i>';
-                        aiProbability.classList.remove('text-green-600');
-                        aiProbability.classList.add('text-red-600');
-                        aiOverallStatus.textContent = 'AI Detected';
-                        aiOverallStatus.classList.remove('text-green-600');
-                        aiOverallStatus.classList.add('text-red-600');
-                    } else {
-                        aiStatusIcon.innerHTML = '<i data-lucide="user-check" class="h-6 w-6 text-green-600 mr-2"></i>';
-                        aiProbability.classList.remove('text-red-600');
-                        aiProbability.classList.add('text-green-600');
-                        aiOverallStatus.textContent = 'Human Detected';
-                        aiOverallStatus.classList.remove('text-red-600');
-                        aiOverallStatus.classList.add('text-green-600');
-                    }
-                    
-                    if (aiResult.flags && aiResult.flags.length > 0) {
-                        aiFlagsContainer.classList.remove('hidden');
-                        aiFlagsList.innerHTML = '';
-                        aiResult.flags.forEach(flag => {
-                            const li = document.createElement('li');
-                            li.className = 'text-orange-600';
-                            li.textContent = `• ${flag}`;
-                            aiFlagsList.appendChild(li);
-                        });
-                    } else {
-                        aiFlagsContainer.classList.add('hidden');
-                    }
-
-                    // Rubric assessment always runs
-                    console.log('Running rubric assessment with Ollama...');
-                    const rubricResult = await scoreWithOllamaRubric(extractedDocText, rubricSettings);
-                    
-                    // Display Rubric Assessment Results
-                    rubricAssessmentResults.classList.remove('hidden');
-                    overallScore.textContent = `${rubricResult.totalScore}%`;
-                    overallComments.textContent = rubricResult.overallComments;
-                    if (rubricResult.overallComments) {
-                        overallCommentsContainer.classList.remove('hidden');
-                    } else {
-                        overallCommentsContainer.classList.add('hidden');
-                    }
-
-                    rubricBreakdown.innerHTML = ''; 
-                    rubricResult.breakdown.forEach(item => {
-                        const criterionDiv = document.createElement('div');
-                        criterionDiv.className = 'p-4 bg-white border border-blue-200 rounded-lg';
-                        criterionDiv.innerHTML = `
-                            <div class="flex justify-between items-center mb-2">
-                                <h4 class="font-medium text-blue-800">${item.criterion} (<span class="text-gray-600">${item.weight}%</span>)</h4>
-                                <span class="text-xl font-bold text-blue-600">${item.score}/5</span>
-                            </div>
-                            <p class="text-sm text-gray-700">${item.feedback}</p>
-                        `;
-                        rubricBreakdown.appendChild(criterionDiv);
-                    });
-                    lucide.createIcons(); // Re-render Lucide icons for results
-                } catch (error) {
-                    console.error('Overall Assessment Error:', error);
-                    showMessage(`An error occurred during assessment: ${error.message}. Please check your Ollama setup and try again.`, 'error');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit for Assessment';
-                    lucide.createIcons(); // Ensure all icons are rendered after updates
-                }
-            });
-
-            // --- Teacher Settings Functions ---
-            function calculateTotalWeight() {
-                const total = rubricSettings.reduce((sum, criterion) => sum + criterion.weight, 0);
-                totalWeightDisplay.textContent = total;
-                if (total !== 100) {
-                    totalWeightWarning.classList.remove('hidden');
-                    totalWeightDisplay.classList.add('text-red-600');
-                } else {
-                    totalWeightWarning.classList.add('hidden');
-                    totalWeightDisplay.classList.remove('text-red-600');
-                }
+            if (rubricSettings.length === 0) {
+                showMessage('Please add at least one rubric criterion in Teacher Settings.', 'error');
+                return;
             }
 
-            function saveRubricSettings() {
-                localStorage.setItem('rubricSettings', JSON.stringify(rubricSettings));
-                calculateTotalWeight();
-            }
+            setIsProcessing(true);
+            setAiDetectionResult(null); // Clear previous results
+            setRubricScore(null); // Clear previous results
 
-            function renderRubricSettings() {
-                rubricSettingsList.innerHTML = '';
-                rubricSettings.forEach(criterion => {
-                    const criterionDiv = document.createElement('div');
-                    criterionDiv.className = 'p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4';
-                    criterionDiv.innerHTML = `
-                        <div class="flex-grow">
-                            <input type="text" value="${criterion.criterion}" data-id="${criterion.id}" data-field="criterion"
-                                class="w-full text-lg font-medium text-gray-800 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <textarea data-id="${criterion.id}" data-field="description"
-                                class="w-full text-sm text-gray-600 mt-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                rows="2" placeholder="Description">${criterion.description}</textarea>
+            try {
+                // Menggunakan fungsi detectAIContent yang sekarang memanggil Gemini API
+                const aiResult = await detectAIContent(extractedText);
+                setAiDetectionResult(aiResult);
+
+                // AI Threshold logic is removed, so rubric assessment always proceeds if AI detection is successful
+                showMessage('Processing', 'AI detection complete. Proceeding to rubric assessment...');
+                // Menggunakan fungsi scoreWithGeminiRubric yang sekarang memanggil Gemini API
+                const rubricResult = await scoreWithGeminiRubric(extractedText, rubricSettings);
+                setRubricScore(rubricResult);
+                showMessage('Complete', 'Document assessment finished.');
+            } catch (error) {
+                console.error('Error processing document:', error);
+                showMessage('Processing Error', `An error occurred during assessment: ${error.message}. Please check your API key and network connection.`, 'error');
+            } finally {
+                setIsProcessing(false);
+            }
+          };
+
+          /**
+           * Adds a new criterion to the rubric settings.
+           * Validates input fields before adding.
+           */
+          const addCriterion = () => {
+            if (newCriterion.criterion && newCriterion.weight && newCriterion.description) {
+              const weight = parseInt(newCriterion.weight);
+              if (isNaN(weight) || weight < 0 || weight > 100) {
+                showMessage('Invalid Input', 'Please enter a valid weight (0-100).');
+                return;
+              }
+
+              const id = rubricSettings.length > 0 ? Math.max(...rubricSettings.map(r => r.id)) + 1 : 1;
+              setRubricSettings([...rubricSettings, { 
+                id, 
+                criterion: newCriterion.criterion,
+                weight: weight,
+                description: newCriterion.description
+              }]);
+              setNewCriterion({ criterion: '', weight: '', description: '' });
+              showMessage('Criterion Added', `Criterion "${newCriterion.criterion}" successfully added.`);
+              saveSettings(); // Save settings after change
+            } else {
+              showMessage('Incomplete Input', 'Please fill in all fields for the new criterion.');
+            }
+          };
+
+          /**
+           * Removes a criterion from the rubric settings based on its ID.
+           * @param {number} id The ID of the criterion to remove.
+           */
+          const removeCriterion = (id) => {
+            setRubricSettings(rubricSettings.filter(r => r.id !== id));
+            showMessage('Criterion Removed', 'Criterion successfully removed.');
+            saveSettings(); // Save settings after change
+          };
+
+          // Student View Component
+          const StudentView = () => (
+            <div className="max-w-4xl mx-auto p-6 font-inter">
+              <div className="bg-white rounded-lg shadow-lg p-8">
+                <div className="text-center mb-8">
+                  <FileText className="mx-auto h-16 w-16 text-blue-600 mb-4" />
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Paper Assessment System</h1>
+                  <p className="text-gray-600">Upload your essay for AI detection and rubric-based evaluation</p>
+                </div>
+
+                {/* File Upload Section */}
+                <div className="mb-8">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <div className="mb-4">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                      >
+                        Choose DOCX File
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".docx"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
+                    {file && (
+                      <div className="text-sm text-gray-600">
+                        <p>Selected: <span className="font-medium">{file.name}</span></p>
+                        <p>Size: <span className="font-medium">{(file.size / 1024).toFixed(1)} KB</span></p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Document Preview Section */}
+                {extractedText && (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-2">Document Preview:</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto border border-gray-200">
+                      <p className="text-sm text-gray-700">{extractedText.substring(0, 500)}...</p>
+                      {extractedText.length > 500 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          (Showing first 500 characters. Full text processed internally.)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <div className="text-center">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!file || isProcessing || !isSettingsLoaded}
+                    className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-md flex items-center justify-center mx-auto"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="animate-spin h-5 w-5 mr-3" /> Processing...
+                      </>
+                    ) : (
+                      'Submit for Assessment'
+                    )}
+                  </button>
+                  {!isSettingsLoaded && <p className="text-sm text-gray-500 mt-2">Loading settings...</p>}
+                </div>
+
+                {/* AI Detection Results Display */}
+                {aiDetectionResult && (
+                  <div className="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center mb-4">
+                      {/* AI Detection Status Icon based on probability. Threshold logic removed. */}
+                      {aiDetectionResult.probability >= 50 ? ( // Example: 50% and above is considered AI
+                          <AlertTriangle className="h-6 w-6 text-red-600 mr-2" />
+                      ) : (
+                          <CheckCircle className="h-6 w-6 text-green-600 mr-2" />
+                      )}
+                      <h3 className="text-xl font-semibold text-gray-800">AI Detection Results</h3>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm text-gray-600">AI Probability</p>
+                        <p className={`text-2xl font-bold ${aiDetectionResult.probability >= 50 ? 'text-red-600' : 'text-green-600'}`}>
+                          {aiDetectionResult.probability}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Status</p>
+                        <p className={`text-lg font-semibold ${aiDetectionResult.probability >= 50 ? 'text-red-600' : 'text-green-600'}`}>
+                          {aiDetectionResult.probability >= 50 ? 'AI Detected' : 'Human Detected'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Word Count</p>
+                        <p className="font-semibold text-gray-800">{aiDetectionResult.wordCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Sentences</p>
+                        <p className="font-semibold text-gray-800">{aiDetectionResult.sentenceCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Avg Sentence Length</p>
+                        <p className="font-semibold text-gray-800">{aiDetectionResult.avgSentenceLength} words</p>
+                      </div>
+                    </div>
+
+                    {aiDetectionResult.flags.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Detection Flags:</p>
+                        <ul className="text-sm space-y-1 list-disc list-inside">
+                          {aiDetectionResult.flags.map((flag, index) => (
+                            <li key={index} className="text-orange-700">{flag}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rubricScore && ( // Rubric score is always shown if AI detection completes
+                  <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center mb-4">
+                      <BarChart3 className="h-6 w-6 text-blue-600 mr-2" />
+                      <h3 className="text-xl font-semibold text-gray-800">Rubric Assessment Results</h3>
+                    </div>
+                    
+                    <div className="text-center mb-6">
+                      <div className="text-5xl font-extrabold text-blue-700 mb-2">{rubricScore.totalScore}%</div>
+                      <p className="text-gray-600 text-lg">Overall Score</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {rubricScore.breakdown.map((item) => (
+                        <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+                          <div className="flex-1 mb-2 sm:mb-0">
+                            <h4 className="font-medium text-gray-900 text-lg">{item.criterion}</h4>
+                            <p className="text-sm text-gray-600">{item.description}</p>
+                          </div>
+                          <div className="text-left sm:text-right ml-0 sm:ml-4 flex-shrink-0">
+                            <div className="text-xl font-semibold text-blue-600">{item.score}/5</div>
+                            <div className="text-sm text-gray-600">Weight: {item.weight}%</div>
+                            <div className="text-sm text-gray-600">Weighted Score: {item.weightedScore.toFixed(1)}</div>
+                          </div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="number" value="${criterion.weight}" data-id="${criterion.id}" data-field="weight"
-                                class="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="text-gray-600">%</span>
-                            <button data-id="${criterion.id}" class="delete-criterion-btn p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors">
-                                <i data-lucide="trash-2" class="h-5 w-5"></i>
-                            </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+
+          // Teacher Settings Component
+          const TeacherSettings = () => (
+            <div className="max-w-4xl mx-auto p-6 font-inter">
+              <div className="bg-white rounded-lg shadow-lg p-8">
+                <div className="flex items-center mb-6">
+                  <Settings className="h-8 w-8 text-blue-600 mr-3" />
+                  <h1 className="text-3xl font-bold text-gray-900">Teacher Settings</h1>
+                </div>
+
+                {/* AI Threshold Setting - Removed as per user request */}
+                {/* <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">AI Detection Threshold</h3>
+                  <div className="flex items-center space-x-4">
+                    <label htmlFor="ai-threshold-slider" className="text-sm text-gray-600 flex-shrink-0">Threshold:</label>
+                    <input
+                      id="ai-threshold-slider"
+                      type="range"
+                      min="0"
+                      max="100" // Increased max to 100 for more flexibility
+                      value={aiThreshold}
+                      onChange={(e) => setAiThreshold(parseInt(e.target.value))}
+                      onMouseUp={saveSettings} // Save when slider is released
+                      onTouchEnd={saveSettings} // Save when touch ends (for touch devices)
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <span className="font-semibold text-blue-600 w-12 text-right">{aiThreshold}%</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Papers with AI probability above this threshold will be flagged and will not proceed to rubric assessment.
+                  </p>
+                </div> */}
+
+                {/* Rubric Settings Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Rubric Criteria Management</h3>
+                  
+                  {/* Add New Criterion Form */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-gray-800 mb-3">Add New Criterion</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Criterion name (e.g., Clarity)"
+                        value={newCriterion.criterion}
+                        onChange={(e) => setNewCriterion({...newCriterion, criterion: e.target.value})}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Weight (%) (e.g., 20)"
+                        value={newCriterion.weight}
+                        onChange={(e) => setNewCriterion({...newCriterion, weight: e.target.value})}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        min="0"
+                        max="100"
+                      />
+                      <button
+                        onClick={addCriterion}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-gray-400"
+                        disabled={!newCriterion.criterion || !newCriterion.weight || !newCriterion.description || isSavingSettings}
+                      >
+                        {isSavingSettings ? 'Saving...' : 'Add Criterion'}
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Description (e.g., The clarity of ideas and arguments)"
+                      value={newCriterion.description}
+                      onChange={(e) => setNewCriterion({...newCriterion, description: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 min-h-[60px]"
+                      rows="2"
+                    />
+                  </div>
+
+                  {/* Current Criteria List */}
+                  <div className="space-y-4">
+                    {rubricSettings.length === 0 && (
+                      <p className="text-gray-600 text-center p-4 bg-white rounded-lg border border-gray-200">No rubric criteria added yet. Add some above!</p>
+                    )}
+                    {rubricSettings.map((criterion) => (
+                      <div key={criterion.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <div className="flex-1 mb-2 sm:mb-0">
+                          <h4 className="font-medium text-gray-900 text-lg">{criterion.criterion}</h4>
+                          <p className="text-sm text-gray-600">{criterion.description}</p>
                         </div>
-                    `;
-                    rubricSettingsList.appendChild(criterionDiv);
-                });
+                        <div className="flex items-center space-x-4 flex-shrink-0">
+                          <span className="text-base font-medium text-blue-700">{criterion.weight}%</span>
+                          <button
+                            onClick={() => removeCriterion(criterion.id)}
+                            className="text-red-600 hover:text-red-800 transition-colors px-3 py-1 rounded-md border border-red-300 hover:border-red-500"
+                            disabled={isSavingSettings}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                // Add event listeners for new elements
-                rubricSettingsList.querySelectorAll('.delete-criterion-btn').forEach(button => {
-                    button.addEventListener('click', (event) => {
-                        const idToDelete = parseInt(event.currentTarget.dataset.id);
-                        rubricSettings = rubricSettings.filter(c => c.id !== idToDelete);
-                        saveRubricSettings();
-                        renderRubricSettings();
-                    });
-                });
+                  {/* Total Weight Summary */}
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                    <p className="text-sm">
+                      Total Weight: <span className="font-semibold">{rubricSettings.reduce((sum, r) => sum + r.weight, 0)}%</span>
+                      {rubricSettings.reduce((sum, r) => sum + r.weight, 0) !== 100 && 
+                        <span className="font-semibold text-red-700"> (Warning: Total weight should ideally equal 100%)</span>
+                      }
+                    </p>
+                    <button
+                      onClick={saveSettings}
+                      disabled={isSavingSettings}
+                      className="mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-400"
+                    >
+                      {isSavingSettings ? 'Saving...' : 'Save Settings Now'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
 
-                rubricSettingsList.querySelectorAll('input[data-field="criterion"], textarea[data-field="description"]').forEach(input => {
-                    input.addEventListener('change', (event) => {
-                        const idToUpdate = parseInt(event.target.dataset.id);
-                        const field = event.target.dataset.field;
-                        const value = event.target.value;
-                        const criterion = rubricSettings.find(c => c.id === idToUpdate);
-                        if (criterion) {
-                            criterion[field] = value;
-                            saveRubricSettings();
-                        }
-                    });
-                });
+          return (
+            <div className="min-h-screen bg-gray-100 font-inter">
+              {/* Navigation Bar */}
+              <nav className="bg-white shadow-sm border-b">
+                <div className="max-w-6xl mx-auto px-6">
+                  <div className="flex justify-between items-center h-16">
+                    <div className="flex items-center space-x-4">
+                      <PenTool className="h-8 w-8 text-blue-600" />
+                      <span className="text-xl font-bold text-gray-900">EssayChecker Pro</span>
+                    </div>
+                    <div className="flex space-x-2 sm:space-x-4">
+                      <button
+                        onClick={() => setCurrentView('student')}
+                        className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                          currentView === 'student' 
+                            ? 'bg-blue-600 text-white shadow-md' 
+                            : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        <User className="inline h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Student View</span>
+                        <span className="inline sm:hidden">Student</span>
+                      </button>
+                      <button
+                        onClick={() => setCurrentView('teacher')}
+                        className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                          currentView === 'teacher' 
+                            ? 'bg-blue-600 text-white shadow-md' 
+                            : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        <Settings className="inline h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Teacher Settings</span>
+                        <span className="inline sm:hidden">Teacher</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </nav>
 
-                rubricSettingsList.querySelectorAll('input[data-field="weight"]').forEach(input => {
-                    input.addEventListener('change', (event) => {
-                        const idToUpdate = parseInt(event.target.dataset.id);
-                        const value = parseInt(event.target.value);
-                        const criterion = rubricSettings.find(c => c.id === idToUpdate);
-                        if (criterion && !isNaN(value) && value >= 0) {
-                            criterion.weight = value;
-                            saveRubricSettings();
-                        } else {
-                            // Revert to previous valid value or show error
-                            event.target.value = criterion.weight;
-                            showMessage('Weight must be a non-negative number.', 'error');
-                        }
-                    });
-                });
-
-                calculateTotalWeight();
-                lucide.createIcons(); // Re-render Lucide icons for settings
-            }
-
-            addCriterionBtn.addEventListener('click', () => {
-                const name = newCriterionNameInput.value.trim();
-                const weight = parseInt(newCriterionWeightInput.value);
-                const description = newCriterionDescriptionInput.value.trim();
-
-                if (!name) {
-                    showMessage('Criterion name cannot be empty.', 'error');
-                    return;
-                }
-                if (isNaN(weight) || weight < 0) {
-                    showMessage('Weight must be a non-negative number.', 'error');
-                    return;
-                }
-
-                const newId = rubricSettings.length > 0 ? Math.max(...rubricSettings.map(c => c.id)) + 1 : 1;
-                rubricSettings.push({ id: newId, criterion: name, weight: weight, description: description });
-                saveRubricSettings();
-                renderRubricSettings();
-
-                newCriterionNameInput.value = '';
-                newCriterionWeightInput.value = '0';
-                newCriterionDescriptionInput.value = '';
-                hideMessage();
-            });
-
-            // Initial render of Lucide icons on page load
-            lucide.createIcons();
+              {/* Main Content Area based on currentView */}
+              {currentView === 'student' ? <StudentView /> : <TeacherSettings />}
+            </div>
+          );
         };
+
+        // Render the React application
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
