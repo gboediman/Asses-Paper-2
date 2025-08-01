@@ -485,9 +485,11 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                   
                   const breakdown = rubricCriteria.map(criterion => {
                       const score = individualScores[criterion.criterion] || 3; // Default score 3 if none
-                      const weightedScore = (score * criterion.weight / 5); // Score 1-5, multiplied by weight, divided by 5 for normalization
+                      // Ensure criterion.weight is treated as a number for calculation
+                      const weightAsNumber = parseInt(criterion.weight);
+                      const weightedScore = (score * weightAsNumber / 5); // Score 1-5, multiplied by weight, divided by 5 for normalization
                       totalScore += weightedScore;
-                      totalWeight += criterion.weight;
+                      totalWeight += weightAsNumber;
                       
                       return {
                           ...criterion,
@@ -515,18 +517,21 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                   const breakdown = rubricCriteria.map(criterion => {
                       let score = 3; // Fallback score
                       scores[criterion.criterion] = score;
-                      totalScore += score * criterion.weight;
-                      totalWeight += criterion.weight; 
+                      // Ensure criterion.weight is treated as a number for calculation
+                      const weightAsNumber = parseInt(criterion.weight);
+                      totalScore += score * weightAsNumber;
+                      totalWeight += weightAsNumber; 
                       
                       return {
                           ...criterion,
                           score: score,
-                          weightedScore: (score * criterion.weight / 5),
+                          weightedScore: (score * weightAsNumber / 5),
                           feedback: 'Fallback feedback - Gemini service unavailable.'
                       };
                   });
 
-                  const finalScore = Math.round((totalScore / (totalWeight || 1)) * 100 / 5); 
+                  // Corrected fallback calculation: remove the extra / 5
+                  const finalScore = Math.round((totalScore / (totalWeight || 1)) / 5 * 100); 
                   
                   return {
                       individualScores: scores,
@@ -792,7 +797,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
           // Teacher Settings Component
           const TeacherSettings = () => {
             // Calculate total weight for display
-            const totalWeight = rubricSettings.reduce((sum, r) => sum + r.weight, 0);
+            const totalWeight = rubricSettings.reduce((sum, r) => sum + parseInt(r.weight || 0), 0); // Ensure weight is parsed to int for sum
 
             return (
               <div className="max-w-4xl mx-auto p-6 font-inter">
