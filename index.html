@@ -262,7 +262,12 @@
               const unsubscribe = firebase.firestore.onSnapshot(settingsDocRef, (docSnap) => {
                 if (docSnap.exists()) {
                   const data = docSnap.data();
-                  setRubricSettings(data.rubricSettings || []);
+                  // Ensure weights are loaded as numbers, but stored as strings in state for editing
+                  const loadedRubricSettings = data.rubricSettings.map(criterion => ({
+                      ...criterion,
+                      weight: String(criterion.weight) // Convert to string for input value
+                  }));
+                  setRubricSettings(loadedRubricSettings || []);
                   showMessage('Settings Loaded', 'Rubric settings loaded successfully.');
                 } else {
                   showMessage('Settings', 'No settings found in Firestore. Using default settings.');
@@ -288,8 +293,15 @@
             try {
               const currentAppId = firebaseConfig.projectId;
               const settingsDocRef = firebase.firestore.doc(db, `artifacts/${currentAppId}/users/${userId}/settings/appSettings`);
+              
+              // Parse weights to numbers before saving to Firestore
+              const settingsToSave = rubricSettings.map(criterion => ({
+                ...criterion,
+                weight: parseInt(criterion.weight) || 0 // Ensure it's a number when saving
+              }));
+
               await firebase.firestore.setDoc(settingsDocRef, {
-                rubricSettings,
+                rubricSettings: settingsToSave,
                 lastUpdated: new Date()
               }, { merge: true });
               showMessage('Settings Saved', 'Settings successfully saved to Firestore.');
@@ -579,7 +591,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
               setRubricSettings([...rubricSettings, { 
                 id, 
                 criterion: newCriterion.criterion,
-                weight: weight,
+                weight: String(weight), // Store as string
                 description: newCriterion.description
               }]);
               setNewCriterion({ criterion: '', weight: '', description: '' });
@@ -604,7 +616,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
           const handleCriterionChange = (id, field, value) => {
             setRubricSettings(prevSettings => 
               prevSettings.map(criterion => 
-                criterion.id === id ? { ...criterion, [field]: field === 'weight' ? parseInt(value) || 0 : value } : criterion
+                criterion.id === id ? { ...criterion, [field]: value } : criterion // Store value directly as string
               )
             );
             // saveSettings(); // Removed direct save on change
@@ -856,7 +868,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                             <div className="flex items-center space-x-2 flex-shrink-0">
                               <input
                                 type="number"
-                                value={criterion.weight}
+                                value={criterion.weight} {/* Removed String() conversion here */}
                                 onChange={(e) => handleCriterionChange(criterion.id, 'weight', e.target.value)}
                                 className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 min="0"
