@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Penilaian Makalah</title>
+    <title>Essay Grading System</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
@@ -26,29 +26,29 @@
     <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <!-- Firebase SDKs -->
     <script type="module">
-        // Firebase SDKs diimpor di sini dan akan tersedia secara global sebagai `firebase`
+        // Firebase SDKs are imported here and will be globally available as `firebase`
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-        // Firebase configuration Anda
+        // Your Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCaQvBO3cdPZGpuqoK5BFfmMBAOQ_Axdl4",
-            authDomain: "paper-assesment-01.firebaseapp.com",
-            projectId: "paper-assesment-01",
-            storageBucket: "paper-assesment-01.firebasestorage.app",
-            messagingSenderId: "79926020514",
-            appId: "1:79926020514:web:f1d38c53ef9ee7df5dcafb"
+          apiKey: "AIzaSyBa7awCuSQMYmu8eI5C2_fgdKFAmb-el-o",
+          authDomain: "essay-submission-01.firebaseapp.com",
+          projectId: "essay-submission-01",
+          storageBucket: "essay-submission-01.firebasestorage.app",
+          messagingSenderId: "350453357928",
+          appId: "1:350453357928:web:20bb9404442337b0708add"
         };
 
-        // Variabel global ini diharapkan oleh komponen React
-        // Di lingkungan Canvas, ini akan disediakan secara otomatis.
-        // Untuk pengujian lokal, kita mendefinisikannya di sini.
-        window.__app_id = firebaseConfig.projectId; // Menggunakan projectId sebagai appId
+        // These global variables are expected by the React component
+        // In the Canvas environment, they will be provided automatically.
+        // For local testing, we define them here.
+        window.__app_id = firebaseConfig.projectId; // Using projectId as appId
         window.__firebase_config = JSON.stringify(firebaseConfig);
-        window.__initial_auth_token = null; // Biarkan null untuk masuk anonim secara default jika tidak ada token kustom
+        window.__initial_auth_token = null; // Leave null to sign in anonymously by default if no custom token
 
-        // Membuat objek `firebase` global agar fungsi-fungsi dapat diakses di <script type="text/babel">
+        // Create a global `firebase` object so functions can be accessed in <script type="text/babel">
         window.firebase = {
             initializeApp: initializeApp,
             auth: {
@@ -182,6 +182,48 @@
         );
         // --- End Lucide Icons ---
 
+        // New component for individual rubric criterion item
+        const RubricCriterionItem = React.memo(({ criterion, onCriterionChange, onRemoveCriterion, isSavingSettings }) => {
+            return (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div className="flex-1 mb-2 sm:mb-0">
+                        <input
+                            type="text"
+                            value={criterion.criterion}
+                            onChange={(e) => onCriterionChange(criterion.id, 'criterion', e.target.value)}
+                            className="w-full text-lg font-medium text-gray-800 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <textarea
+                            value={criterion.description}
+                            onChange={(e) => onCriterionChange(criterion.id, 'description', e.target.value)}
+                            className="w-full text-sm text-gray-600 mt-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows="2"
+                            placeholder="Description"
+                        ></textarea>
+                    </div>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                        <input
+                            type="number"
+                            value={criterion.weight} 
+                            onChange={(e) => onCriterionChange(criterion.id, 'weight', e.target.value)}
+                            className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            min="0"
+                            max="100"
+                        />
+                        <span className="text-gray-600">%</span>
+                        <button
+                            onClick={() => onRemoveCriterion(criterion.id)}
+                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            disabled={isSavingSettings}
+                        >
+                            <Trash2 className="h-5 w-5" /> 
+                        </button>
+                    </div>
+                </div>
+            );
+        });
+
+
         const App = () => {
           // Global variables provided by the Canvas environment or defined above for local testing
           const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
@@ -203,13 +245,15 @@
           const [isProcessing, setIsProcessing] = React.useState(false);
           const [aiDetectionResult, setAiDetectionResult] = React.useState(null);
           const [rubricScore, setRubricScore] = React.useState(null);
-          const [rubricSettings, setRubricSettings] = React.useState([
-            { id: 1, criterion: 'Thesis Statement', weight: 20, description: 'Clear, arguable thesis that guides the essay' },
-            { id: 2, criterion: 'Evidence & Support', weight: 25, description: 'Strong evidence and examples that support arguments' },
-            { id: 3, criterion: 'Organization', weight: 20, description: 'Logical structure and smooth transitions' },
-            { id: 4, criterion: 'Writing Quality', weight: 20, description: 'Grammar, syntax, and style' },
-            { id: 5, criterion: 'Critical Thinking', weight: 15, description: 'Analysis, evaluation, and original thought' }
-          ]);
+          
+          // Default rubric settings for 6th-grade elementary essays (all in English)
+          const defaultRubricSettings = [
+            { id: 1, criterion: 'Main Idea', weight: 30, description: 'Clearly states the main point of the essay.' },
+            { id: 2, criterion: 'Supporting Details', weight: 40, description: 'Provides relevant and sufficient details to support the main idea.' },
+            { id: 3, criterion: 'Sentence Structure & Grammar', weight: 30, description: 'Uses varied sentence structures and demonstrates good grammar and spelling.' }
+          ];
+
+          const [rubricSettings, setRubricSettings] = React.useState(defaultRubricSettings);
           const [newCriterion, setNewCriterion] = React.useState({ criterion: '', weight: '', description: '' });
           const [isSavingSettings, setIsSavingSettings] = React.useState(false);
           const [isSettingsLoaded, setIsSettingsLoaded] = React.useState(false);
@@ -270,6 +314,8 @@
                   setRubricSettings(loadedRubricSettings || []);
                   showMessage('Settings Loaded', 'Rubric settings loaded successfully.');
                 } else {
+                  // If no settings found, use default settings.
+                  setRubricSettings(defaultRubricSettings);
                   showMessage('Settings', 'No settings found in Firestore. Using default settings.');
                 }
                 setIsSettingsLoaded(true);
@@ -345,7 +391,7 @@
            * @returns {Promise<string>} The generated text response.
            */
           async function callGeminiAPI(promptText, generationConfig = {}) {
-              const API_KEY = "AIzaSyAq71Famse8z1JTjMJw9NaXQSG3a7Ea0eU"; // Kunci API Gemini Anda
+              const API_KEY = "AIzaSyAq71Famse8z1JTjMJw9NaXQSG3a7Ea0eU"; // Your Gemini API Key
               const MODEL_NAME = "gemini-1.5-flash-latest"; 
               const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
@@ -562,13 +608,13 @@ ${JSON.stringify(rubricCriteria, null, 2)}
             setRubricScore(null); // Clear previous results
 
             try {
-                // Menggunakan fungsi detectAIContent yang sekarang memanggil Gemini API
+                // Use the detectAIContent function which now calls the Gemini API
                 const aiResult = await detectAIContent(extractedText);
                 setAiDetectionResult(aiResult);
 
                 // AI Threshold logic is removed, so rubric assessment always proceeds if AI detection is successful
                 showMessage('Processing', 'AI detection complete. Proceeding to rubric assessment...');
-                // Menggunakan fungsi scoreWithGeminiRubric yang sekarang memanggil Gemini API
+                // Use the scoreWithGeminiRubric function which now calls the Gemini API
                 const rubricResult = await scoreWithGeminiRubric(extractedText, rubricSettings);
                 setRubricScore(rubricResult);
                 showMessage('Complete', 'Document assessment finished.');
@@ -634,7 +680,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
               <div className="bg-white rounded-lg shadow-lg p-8">
                 <div className="text-center mb-8">
                   <FileText className="mx-auto h-16 w-16 text-blue-600 mb-4" />
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Paper Assessment System</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Essay Assessment System</h1>
                   <p className="text-gray-600">Upload your essay for AI detection and rubric-based evaluation</p>
                 </div>
 
@@ -794,7 +840,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
             </div>
           );
 
-          // Teacher Settings Component
+          // Teacher Settings Component (RE-INTRODUCED and OPTIMIZED)
           const TeacherSettings = () => {
             // Calculate total weight for display
             const totalWeight = rubricSettings.reduce((sum, r) => sum + parseInt(r.weight || 0), 0); // Ensure weight is parsed to int for sum
@@ -807,7 +853,7 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                     <h1 className="text-3xl font-bold text-gray-900">Teacher Settings</h1>
                   </div>
 
-                  {/* Rubric Settings Section */}
+                  {/* Rubric Criteria Management Section */}
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Rubric Criteria Management</h3>
                     
@@ -854,41 +900,13 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                         <p className="text-gray-600 text-center p-4 bg-white rounded-lg border border-gray-200">No rubric criteria added yet. Add some above!</p>
                       ) : (
                         rubricSettings.map((criterion) => (
-                          <div key={criterion.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                            <div className="flex-1 mb-2 sm:mb-0">
-                              <input
-                                type="text"
-                                value={criterion.criterion}
-                                onChange={(e) => handleCriterionChange(criterion.id, 'criterion', e.target.value)}
-                                className="w-full text-lg font-medium text-gray-800 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                              <textarea
-                                value={criterion.description}
-                                onChange={(e) => handleCriterionChange(criterion.id, 'description', e.target.value)}
-                                className="w-full text-sm text-gray-600 mt-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                rows="2"
-                                placeholder="Description"
-                              ></textarea>
-                            </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                              <input
-                                type="number"
-                                value={criterion.weight} 
-                                onChange={(e) => handleCriterionChange(criterion.id, 'weight', e.target.value)}
-                                className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                min="0"
-                                max="100"
-                              />
-                              <span className="text-gray-600">%</span>
-                              <button
-                                onClick={() => removeCriterion(criterion.id)}
-                                className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                disabled={isSavingSettings}
-                              >
-                                <Trash2 className="h-5 w-5" /> {/* Menggunakan ikon Trash2 yang baru didefinisikan */}
-                              </button>
-                            </div>
-                          </div>
+                          <RubricCriterionItem
+                            key={criterion.id} // Important for React list rendering optimization
+                            criterion={criterion}
+                            onCriterionChange={handleCriterionChange}
+                            onRemoveCriterion={removeCriterion}
+                            isSavingSettings={isSavingSettings}
+                          />
                         ))
                       )}
                     </div>
@@ -923,8 +941,9 @@ ${JSON.stringify(rubricCriteria, null, 2)}
                   <div className="flex justify-between items-center h-16">
                     <div className="flex items-center space-x-4">
                       <PenTool className="h-8 w-8 text-blue-600" />
-                      <span className="text-xl font-bold text-gray-900">EssayChecker Pro</span>
+                      <span className="text-xl font-bold text-gray-900">Essay Grading System</span>
                     </div>
+                    {/* Navigation buttons */}
                     <div className="flex space-x-2 sm:space-x-4">
                       <button
                         onClick={() => setCurrentView('student')}
