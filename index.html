@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Essay Grading System/G (Firebase & Gemini)</title>
+    <title>Essay Grading System (Firebase & Gemini)</title>
     <!-- Mammoth.js for DOCX parsing -->
     <!-- You can download it from: https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js -->
     <script src="./mammoth.browser.min.js"></script>
@@ -149,11 +149,28 @@
             messageBox.classList.add('hidden');
         }
 
-        function clearResults() {
+        // Fungsi ini sekarang hanya akan menyembunyikan hasil, tidak menghapus kontennya
+        function hideResults() {
             document.getElementById('aiDetectionResults').classList.add('hidden');
             document.getElementById('rubricAssessmentResults').classList.add('hidden');
             hideMessage();
         }
+
+        // Fungsi ini akan membersihkan konten hasil secara manual saat SUBMISI BARU
+        function clearResultsContent() {
+            document.getElementById('aiProbability').textContent = '';
+            document.getElementById('aiConfidence').textContent = '';
+            document.getElementById('aiOverallStatus').textContent = '';
+            document.getElementById('wordCount').textContent = '';
+            document.getElementById('sentenceCount').textContent = '';
+            document.getElementById('avgSentenceLength').textContent = '';
+            document.getElementById('aiFlagsList').innerHTML = '';
+            document.getElementById('overallScore').textContent = '';
+            document.getElementById('overallComments').textContent = '';
+            document.getElementById('rubricBreakdown').innerHTML = '';
+            hideMessage();
+        }
+
 
         // --- View Switching ---
         function setupViewSwitching() {
@@ -169,7 +186,9 @@
                 studentViewBtn.classList.remove('text-gray-600', 'hover:text-blue-600');
                 teacherViewBtn.classList.remove('bg-blue-600', 'text-white');
                 teacherViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
-                clearResults(); // Clear results when switching views
+                // Tidak memanggil clearResults() di sini agar data tetap ada
+                document.getElementById('aiDetectionResults').classList.remove('hidden'); // Tampilkan kembali jika ada data
+                document.getElementById('rubricAssessmentResults').classList.remove('hidden'); // Tampilkan kembali jika ada data
                 lucide.createIcons(); // Re-render Lucide icons
             });
 
@@ -181,6 +200,8 @@
                 studentViewBtn.classList.remove('bg-blue-600', 'text-white');
                 studentViewBtn.classList.add('text-gray-600', 'hover:text-blue-600');
                 renderRubricSettings(); // Render settings when view is active
+                // Sembunyikan hasil saat pindah ke Teacher Settings, tapi tidak hapus kontennya
+                hideResults();
                 lucide.createIcons(); // Re-render Lucide icons
             });
         }
@@ -209,7 +230,9 @@
                     fileSizeSpan.textContent = (uploadedFile.size / 1024).toFixed(1);
                     fileInfo.classList.remove('hidden');
                     submitBtn.disabled = false;
-                    clearResults();
+                    // Panggil clearResultsContent() di sini untuk membersihkan hasil sebelumnya
+                    clearResultsContent();
+                    hideResults(); // Sembunyikan juga tampilan hasil
                     hideMessage();
 
                     try {
@@ -386,8 +409,8 @@ Text to analyze:
                         totalWeight += parseInt(criterion.weight || '0');
                     }
 
-                    // Generate overall comment
-                    const overallCommentPrompt = `Based on the following rubric feedback for an essay, provide an overall narrative comment. This should be a detailed narrative and several paragraphs long, providing comprehensive insights.
+                    // Generate overall comment: Prompt diubah agar lebih ringkas dan fokus
+                    const overallCommentPrompt = `Based on the following rubric feedback for an essay, provide a concise, professional, and comprehensive overall narrative comment. Focus on key strengths, areas for improvement, and actionable advice.
                     \nRubric Feedback:\n${JSON.stringify(detailedRubricFeedback, null, 2)}\n\nEssay:\n"${essayText}"`;
 
                     overallCommentText = await callGemini(overallCommentPrompt);
@@ -485,7 +508,8 @@ Text to analyze:
 
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Processing...';
-                    clearResults();
+                    clearResultsContent(); // Bersihkan konten hasil saat ada pengiriman baru
+                    hideResults(); // Sembunyikan juga tampilan saat proses dimulai
 
                     try {
                         console.log('Running AI detection with Gemini...');
@@ -534,7 +558,9 @@ Text to analyze:
                         const rubricResult = await scoreWithGeminiRubric(extractedDocText, rubricSettings);
 
                         // Display Rubric Assessment Results
-                        rubricAssessmentResults.classList.remove('hidden');
+                        aiDetectionResults.classList.remove('hidden'); // Pastikan terlihat
+                        rubricAssessmentResults.classList.remove('hidden'); // Pastikan terlihat
+
                         overallScore.textContent = `${rubricResult.totalScore}%`;
                         overallComments.textContent = rubricResult.overallComments;
                         if (rubricResult.overallComments) {
@@ -714,7 +740,7 @@ Text to analyze:
             font-family: 'Inter', sans-serif;
             margin: 0;
             background-color: #f3f4f6;
-            min-height: 100vh;
+            min-height: 10vh; /* Changed to min-height for better responsiveness */
             display: flex;
             flex-direction: column;
         }
@@ -743,7 +769,7 @@ Text to analyze:
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-4">
                     <i data-lucide="pen-tool" class="h-8 w-8 text-blue-600"></i>
-                    <span class="text-xl font-bold text-gray-900">EssayChecker Pro/GB</span>
+                    <span class="text-xl font-bold text-gray-900">EssayChecker Pro</span>
                 </div>
                 <div class="flex space-x-4">
                     <button id="studentViewBtn" class="px-4 py-2 rounded-lg transition-colors bg-blue-600 text-white">
@@ -909,4 +935,3 @@ Text to analyze:
     </main>
 </body>
 </html>
-
